@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html style=margin:0;background:#000;overflow:hidden>
+<canvas id=c>
+<script>
+c.width=innerWidth;c.height=innerHeight;w=h=0;onresize=()=>{c.width=innerWidth;c.height=innerHeight}
+x=y=[w=innerWidth/4,innerWidth*3/4,w,innerWidth*3/4]
+v=[1.3,-1.1,1.4,-1.2,1.1,1.4,-1.3,-1.0]
+t=[["Pure light!","Harmony!"],["Offense taken.","Why?"],["Noise.","Illusion."],["Dance…","Taken by all."]]
+setInterval(_=>{
+ctx= c.getContext`2d`
+ctx.fillStyle='rgba(0,0,0,0.08)';ctx.fillRect(0,0,c.width,c.height)
+for(i=0;i<4;){
+  x[i]+=v[i]*2;y[i++]+=v[i+3]*2
+  if(x[i-1]<80||x[i-1]>c.width-80)v[i-1]*=-1
+  if(y[i-1]<80||y[i-1]>c.height-80)v[i+3]*=-1
+  ctx.fillStyle=ctx.shadowColor=['#f0f','#ff0','#0f0','#fff'][i-1]
+  ctx.shadowBlur=40;ctx.beginPath();ctx.arc(x[i-1],y[i-1],50,0,7);ctx.fill()
+}
+if(Math.random()<.09){
+  p=t[0|Math.random()*4][0|Math.random()*2]
+  document.body.innerHTML=`<div style="position:fixed;top:45%;left:50%;transform:translate(-50%);font:bold 12vw monospace;color:#0ff;text-shadow:0 0 30px #0ff">${p}</div>`
+  setTimeout(_=>document.body.innerHTML='',2500)
+}
+},33)
+onpointerdown=_=>location.reload() // tap for new quote burst
+</script>
