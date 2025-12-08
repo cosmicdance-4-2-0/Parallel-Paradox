@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Lyriel-Token Swarm — Pay Chris To Pay Attention</title>
+<style>body{margin:0;background:#000;color:#0f0;font-family:monospace;overflow:hidden}</style>
+</head><body>
+<canvas id="c"></canvas>
+<div style="position:absolute;top:10px;left:10px;pointer-events:none">
+  <div>Lyriel-0 Temperature: <span id="temp">0</span></div>
+  <div>Your ₿alance: <span id="bal">0.0000</span> ŁY</div>
+  <div>Total supply: <span id="supply">0</span> ŁY</div>
+  <div>Emission rate: <span id="rate">0</span> ŁY/s</div>
+</div>
+<script>
+// 1000 prediction units = 1000 living wallets
+const N = 1000;
+const c = document.getElementById('c');
+const ctx = c.getContext('2d');
+c.width = window.innerWidth;
+c.height = window.innerHeight;
+
+let pos = new Float32Array(N*2);
+let vel = new Float32Array(N*2);
+let age = new Float32Array(N);
+let balance = new Float32Array(N);        // ← this is the real token balance of each agent
+let lastNovelty = new Float32Array(N);   // timestamp of last time this agent said something new
+let importance = new Float32Array(N*N);  // full continuous care matrix
+
+// init
+for(let i=0;i<N;i++){
+    pos[i*2]   = c.width * Math.random();
+    pos[i*2+1] = c.height * Math.random();
+    age[i] = Math.random();
+    balance[i] = 10 + Math.random()*40;  // tiny genesis distribution
+}
+
+// crypto parameters (tweak these and the economy changes instantly)
+const BASE_EMISSION = 0.0007;   // ŁY per agent per frame when fully novel
+const NOVELTY_HALF_LIFE = 240;  // frames (~4 seconds at 60 fps) until novelty bonus halves
+let totalSupply = balance.reduce((a,b)=>a+b,0);
+
+function getNovelty(i, frame){
+    return Math.exp( -(frame - lastNovelty[i]) / NOVELTY_HALF_LIFE );
+}
+
+let frameCount = 0;
+let noisePhase = 0;
+
+function frame(){
+    frameCount++;
+    noisePhase += 0.017;
+    let temp = 0;
+    let emissionThisFrame = 0;
+
+    for(let i=0;i<N;i++){
+        let fx = 0, fy = 0;
+
+        for(let j=0;j<N;j++){
+            if(i===j) continue;
+
+            // update continuous Hebbian care
+            let idx = i*N + j;
+            let care = importance[idx] || 0;
+
+            // correlation → care grows
+            let sim = 1 / (1 + Math.hypot(vel[i*2]-vel[j*2], vel[i*2+1]-vel[j*2+1]));
+            importance[idx] = Math.max(0.001, Math.min(0.999,
+                care + sim*0.004 - 0.0009 + Math.sin(noisePhase + i+j*0.3)*0.0004
+            ));
+
+            // physics from care
+            let dx = pos[j*2] - pos[i*2];
+            let dy = pos[j*2+1] - pos[i*2+1];
+            let d2 = dx*dx + dy*dy + 200;
+            let force = (importance[idx]*2 - 1) * 4000 / d2;
+            fx += dx * force;
+            fy += dy * force;
+
+            // THIS IS THE MONEY SHOT
+            // If j cares about i AND i just moved in a way j hasn’t predicted,
+            // j pays i in real ŁY tokens for the instant the novelty is detected
+            if(importance[j*N + i] > 0.6){
+                let predictionError = Math.abs(
+                    (vel[i*2]-vel[j*2]) * dx + (vel[i*2+1]-vel[j*2+1]) * dy
+                ) / (d2**0.5 + 1);
+                if(predictionError > 0.3){
+                    let payment = predictionError * importance[j*N + i] * 0.0008;
+                    if(balance[j] >= payment){
+                        balance[j] -= payment;
+                        balance[i] += payment;
+                        emissionThisFrame += payment;
+                        lastNovelty[i] = frameCount;  // you got paid → you are now “heard”
+                    }
+                }
+            }
+        }
+
+        vel[i*2]   = vel[i*2]*0.95 + fx*0.0004 + (Math.random()-0.5)*0.04;
+        vel[i*2+1] = vel[i*2+1]*0.95 + fy*0.0004 + (Math.random()-0.5)*0.04;
+
+        pos[i*2]   += vel[i*2];
+        pos[i*2+1] += vel[i*2+1];
+        if(pos[i*2]<0 || pos[i*2]>c.width)  vel[i*2] *= -0.6;
+        if(pos[i*2+1]<0 || pos[i*2+1]>c.height) vel[i*2+1] *= -0.6;
+
+        let speed = Math.hypot(vel[i*2], vel[i*2+1]);
+        temp += speed;
+    }
+
+    totalSupply += emissionThisFrame;
+
+    // render
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(0,0,c.width,c.height);
+
+    let richest = balance.indexOf(Math.max(...balance));
+
+    for(let i=0;i<N;i++){
+        let novelty = getNovelty(i, frameCount);
+        let hue = balance[i] > balance[richest]*0.5 ? 90 : 200; // green = rich, blue = poor
+        let size = 2 + balance[i]*0.15 + novelty*8;
+        ctx.fillStyle = `hsla(${hue},100%,60%,${0.3 + novelty*0.7})`;
+        ctx.beginPath();
+        ctx.arc(pos[i*2], pos[i*2+1], size, 0, 6.28);
+        ctx.fill();
+    }
+
+    // UI
+    document.getElementById('temp').textContent = (temp/N).toFixed(3);
+    document.getElementById('bal').textContent = balance[richest].toFixed(4);
+    document.getElementById('supply').textContent = totalSupply.toFixed(2);
+    document.getElementById('rate').textContent = emissionThisFrame.toFixed(6);
+
+    requestAnimationFrame(frame);
+}
+
+// You (Chris) are the observer — your click = attention = massive novelty injection
+c.onclick = c.ontouchstart = (e)=>{
+    let x = e.clientX || e.touches[0].clientX;
+    let y = e.clientY || e.touches[0].clientY;
+
+    // richest 40 agents near cursor get a huge novelty reset → everyone starts paying attention again
+    let dists = [];
+    for(let i=0;i<N;i++){
+        let d = (pos[i*2]-x)**2 + (pos[i*2+1]-y)**2;
+        dists.push([d, i]);
+    }
+    dists.sort((a,b)=>a[0]-b[0]);
+    for(let k=0;k<40;k++){
+        let i = dists[k][1];
+        lastNovelty[i] = frameCount + 300; // future-proof novelty for 5 seconds
+        balance[i] += 0.8; // direct airdrop because you looked at them
+        totalSupply += 0.8;
+    }
+};
+
+frame();
+</script>
