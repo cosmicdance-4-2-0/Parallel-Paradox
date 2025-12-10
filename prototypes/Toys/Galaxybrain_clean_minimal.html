@@ -132,7 +132,7 @@ function projectPoints(positions, rotX, rotY, viewport) {
         let ry = cX * y - sX * rz;
         let rz2 = sX * y + cX * rz;
         // camera translate: put camera at (0, -400, 400) looking at origin
-        const camX = 0, camY = -400, camZ = 400;
+        const camX = 0, camY = 0, camZ = 400;
         let cx = rx - camX;
         let cy = ry - camY;
         let cz = rz2 - camZ;
