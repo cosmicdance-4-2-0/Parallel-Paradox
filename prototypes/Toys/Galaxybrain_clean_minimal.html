@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PhaseCube GalaxyBrain 3D — Single HTML Minimal</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>PhaseCube GalaxyBrain 3D — Single HTML Minimal (Fixed)</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: monospace; color: #fff; }
-        canvas { display: block; }
-        #info { position: absolute; top: 10px; left: 10px; z-index: 10; }
-        #controls { position: absolute; bottom: 10px; left: 10px; z-index: 10; }
-        button { background: #333; color: #fff; border: 1px solid #666; padding: 5px 10px; margin: 2px; cursor: pointer; }
-        button:hover { background: #555; }
+        body { margin:0; background:#000; overflow:hidden; font-family:monospace; color:#fff; }
+        canvas { display:block; }
+        #info { position:absolute; top:10px; left:10px; z-index:10; }
+        #controls { position:absolute; bottom:10px; left:10px; z-index:10; }
+        button { background:#333; color:#fff; border:1px solid #666; padding:5px 10px; margin:2px; cursor:pointer; }
+        button:hover { background:#555; }
     </style>
 </head>
 <body>
@@ -21,225 +21,247 @@
         <button onclick="togglePause()">Pause/Resume</button>
     </div>
 
-    <script>
-        // Config (tuning knobs exposed)
-        const WIDTH = 800;
-        const HEIGHT = 800;
-        const GRID = 16;
-        const SCALE = 25;
-        const FPS = 60;
-        const POINT_SIZE = 8.0;
+<script>
+/* ---------------- Config ---------------- */
+const WIDTH = 800;
+const HEIGHT = 800;
+const GRID = 16;
+const SCALE = 25;
+const FPS = 60;
+const POINT_SIZE = 3;          // base radius
 
-        // Dynamics tuning
-        const FLIP_PROB = 0.02;
-        const PARITY_FLIP_PROB = 0.01;
-        const PATH_B_PROB = 0.65;
-        const BLEND_ALPHA = 0.18;
+// Dynamics tuning
+const FLIP_PROB = 0.02;
+const PARITY_FLIP_PROB = 0.01;
+const PATH_B_PROB = 0.65;
+const BLEND_ALPHA = 0.18;
 
-        // Globals
-        let canvas, ctx;
-        let time = 0.0;
-        let paused = false;
-        let mouseX = 0, mouseY = 0;
-        let rotX = 0, rotY = 0;
+/* -------------- Globals --------------- */
+let canvas, ctx;
+let time = 0.0;
+let paused = false;
+let rotX = 0, rotY = 0;
 
-        // PhaseGrid simulation (JS port of NumPy logic)
-        class PhaseGrid {
-            constructor(size, flipProb = FLIP_PROB, parityProb = PARITY_FLIP_PROB) {
-                this.size = size;
-                this.shape = [size, size, size];
-                this.plasma = new Float32Array(this.size ** 3).map(() => Math.random() * 0.5);
-                this.liquid = new Float32Array(this.size ** 3).map(() => Math.random() * 0.5);
-                this.solid = new Float32Array(this.size ** 3).map(() => Math.random() * 0.5);
-                this.parity = new Int8Array(this.size ** 3).fill(0);
-                this.flipProb = flipProb;
-                this.parityProb = parityProb;
-            }
+// positions now global so draw/project can access
+let positions = null;
+let grid = null;
 
-            // Flatten index: x + y*size + z*size^2
-            idx(x, y, z) { return x + y * this.size + z * this.size * this.size; }
+/* ------------- PhaseGrid -------------- */
+class PhaseGrid {
+    constructor(size, flipProb = FLIP_PROB, parityProb = PARITY_FLIP_PROB) {
+        this.size = size;
+        this.len = size * size * size;
+        // initialize typed arrays reliably
+        this.plasma = new Float32Array(this.len);
+        this.liquid = new Float32Array(this.len);
+        this.solid   = new Float32Array(this.len);
+        this.parity  = new Int8Array(this.len);
+        for (let i = 0; i < this.len; ++i) {
+            this.plasma[i] = Math.random() * 0.5;
+            this.liquid[i] = Math.random() * 0.5;
+            this.solid[i]   = Math.random() * 0.5;
+            this.parity[i]  = 0;
+        }
+        this.flipProb = flipProb;
+        this.parityProb = parityProb;
+    }
 
-            perturbLocal() {
-                for (let i = 0; i < this.plasma.length; i++) {
-                    if (Math.random() < this.flipProb) {
-                        this.plasma[i] = 1.0 - this.plasma[i];
-                    }
-                    if (Math.random() < this.parityProb) {
-                        this.parity[i] = 1 - this.parity[i];
-                    }
-                }
-            }
+    idx(x,y,z) { return x + y * this.size + z * this.size * this.size; }
 
-            // Neighbors avg with wrap (manual roll equivalent)
-            neighborsAvg(i) {
-                const size = this.size;
-                const x = i % size;
-                const y = Math.floor(i / size) % size;
-                const z = Math.floor(i / (size * size));
-                let sum = 0;
-                // 6 neighbors with wrap
-                sum += this.plasma[this.idx((x + 1) % size, y, z)];
-                sum += this.plasma[this.idx((x - 1 + size) % size, y, z)];
-                sum += this.plasma[this.idx(x, (y + 1) % size, z)];
-                sum += this.plasma[this.idx(x, (y - 1 + size) % size, z)];
-                sum += this.plasma[this.idx(x, y, (z + 1) % size)];
-                sum += this.plasma[this.idx(x, y, (z - 1 + size) % size)];
-                return sum / 6.0;
-            }
+    perturbLocal() {
+        for (let i = 0; i < this.len; ++i) {
+            if (Math.random() < this.flipProb) this.plasma[i] = 1.0 - this.plasma[i];
+            if (Math.random() < this.parityProb)  this.parity[i]  = 1 - this.parity[i];
+        }
+    }
 
-            breatheStep(pathBProb = PATH_B_PROB, blendAlpha = BLEND_ALPHA) {
-                for (let i = 0; i < this.plasma.length; i++) {
-                    const p = this.plasma[i];
-                    const l = this.liquid[i];
-                    const s = this.solid[i];
-                    const neighbors = this.neighborsAvg(i);
-                    const pathA = (p + l + s) / 3.0;
-                    const pathB = Math.abs(p - neighbors) + (this.parity[i] * 0.13);
-                    const choice = Math.random() < pathBProb ? pathB : pathA;
-                    this.liquid[i] = choice;
-                    this.solid[i] = (s * (1.0 - blendAlpha) + choice * blendAlpha) % 1.0;
-                }
+    neighborsAvg(i) {
+        const s = this.size;
+        const x = i % s;
+        const y = Math.floor(i / s) % s;
+        const z = Math.floor(i / (s * s));
+        let sum = 0.0;
+        sum += this.plasma[this.idx((x + 1) % s, y, z)];
+        sum += this.plasma[this.idx((x - 1 + s) % s, y, z)];
+        sum += this.plasma[this.idx(x, (y + 1) % s, z)];
+        sum += this.plasma[this.idx(x, (y - 1 + s) % s, z)];
+        sum += this.plasma[this.idx(x, y, (z + 1) % s)];
+        sum += this.plasma[this.idx(x, y, (z - 1 + s) % s)];
+        return sum / 6.0;
+    }
+
+    breatheStep(pathBProb = PATH_B_PROB, blendAlpha = BLEND_ALPHA) {
+        // make local copies for stable reads
+        const pCopy = new Float32Array(this.plasma);
+        const lCopy = new Float32Array(this.liquid);
+        const sCopy = new Float32Array(this.solid);
+        for (let i = 0; i < this.len; ++i) {
+            const p = pCopy[i], l = lCopy[i], s = sCopy[i];
+            const neighbors = this.neighborsAvg(i);
+            const pathA = (p + l + s) / 3.0;
+            const pathB = Math.abs(p - neighbors) + (this.parity[i] * 0.13);
+            const choice = (Math.random() < pathBProb) ? pathB : pathA;
+            this.liquid[i] = choice;
+            this.solid[i] = (s * (1.0 - blendAlpha) + choice * blendAlpha) % 1.0;
+        }
+    }
+}
+
+/* ---------- 3D projection helper --------
+   We do a simple rotate + perspective + viewport transform.
+   Returns an array of objects: {x,y,z,i}
+-----------------------------------------*/
+function projectPoints(positions, rotX, rotY, viewport) {
+    const out = [];
+    const s = GRID;
+    const half = (s - 1) / 2.0;
+    const len = positions.length / 3;
+    // precompute sin/cos
+    const cX = Math.cos(rotX), sX = Math.sin(rotX);
+    const cY = Math.cos(rotY), sY = Math.sin(rotY);
+    const fov = 45 * Math.PI / 180;
+    const aspect = viewport[2] / viewport[3];
+    const near = 1.0, far = 5000.0;
+    const f = 1.0 / Math.tan(fov / 2);
+
+    for (let i = 0, pi = 0; i < len; ++i, pi += 3) {
+        let x = positions[pi], y = positions[pi + 1], z = positions[pi + 2];
+        // apply rotation Y then X (same order as original)
+        let rx = cY * x + sY * z;
+        let rz = -sY * x + cY * z;
+        let ry = cX * y - sX * rz;
+        let rz2 = sX * y + cX * rz;
+        // camera translate: put camera at (0, -400, 400) looking at origin
+        const camX = 0, camY = -400, camZ = 400;
+        let cx = rx - camX;
+        let cy = ry - camY;
+        let cz = rz2 - camZ;
+        // perspective divide
+        // avoid divide by zero / behind-camera points
+        if (cz > -near) {
+            // still include them but they may be clipped later
+        }
+        const ndcX = (f / aspect) * (cx / cz);
+        const ndcY = f * (cy / cz);
+        // map to viewport
+        const scrX = (ndcX * 0.5 + 0.5) * viewport[2] + viewport[0];
+        const scrY = (ndcY * 0.5 + 0.5) * viewport[3] + viewport[1];
+        // use cz as depth (larger cz = farther)
+        out.push({ x: scrX, y: scrY, z: cz, i: i });
+    }
+    // sort back-to-front (farther first)
+    out.sort((a, b) => b.z - a.z);
+    return out;
+}
+
+/* ---------------- Init ----------------- */
+function init() {
+    canvas = document.getElementById('canvas');
+    ctx = canvas.getContext('2d');
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+
+    // build positions global
+    const total = GRID * GRID * GRID;
+    positions = new Float32Array(total * 3);
+    let ptr = 0;
+    const half = (GRID - 1) / 2.0;
+    for (let x = 0; x < GRID; ++x) {
+        for (let y = 0; y < GRID; ++y) {
+            for (let z = 0; z < GRID; ++z) {
+                positions[ptr++] = (x - half) * SCALE;
+                positions[ptr++] = (y - half) * SCALE;
+                positions[ptr++] = (z - half) * SCALE;
             }
         }
+    }
 
-        // 3D Projection (manual matrix math)
-        function projectPoints(positions, modelview, projection, viewport) {
-            const projected = [];
-            for (let i = 0; i < positions.length; i += 3) {
-                const x = positions[i], y = positions[i+1], z = positions[i+2];
-                // Homogeneous: [x, y, z, 1]
-                let hx = x, hy = y, hz = z, hw = 1.0;
-                // Apply modelview (simplified rotation + translate)
-                const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
-                const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
-                const mx = cosY * hx + sinY * hz;
-                const mz = -sinY * hx + cosY * hz;
-                const my = cosX * hy - sinX * mz;
-                const my2 = sinX * hy + cosX * mz;
-                hx = mx;
-                hy = my;
-                hz = my2;
-                hw = 1.0;
+    grid = new PhaseGrid(GRID);
 
-                // Projection (perspective)
-                const fov = 45 * Math.PI / 180;
-                const aspect = WIDTH / HEIGHT;
-                const near = 1.0, far = 5000.0;
-                const f = 1.0 / Math.tan(fov / 2);
-                const px = f / aspect * hx / hw;
-                const py = f * hy / hw;
-                const pz = (far + near) / (near - far) + (2 * far * near / (near - far)) * hz / hw;
+    // Mouse control
+    canvas.addEventListener('mousemove', (e) => {
+        rotX = (e.clientY / HEIGHT - 0.5) * Math.PI;       // -pi/2 .. pi/2
+        rotY = (e.clientX / WIDTH  - 0.5) * Math.PI * 2;   // -pi .. pi
+    });
 
-                // Viewport transform
-                const vx = (px * 0.5 + 0.5) * viewport[2] + viewport[0];
-                const vy = (py * 0.5 + 0.5) * viewport[3] + viewport[1];
-                projected.push({x: vx, y: vy, z: pz, i: i / 3});
-            }
-            // Sort by z for painter's algorithm
-            projected.sort((a, b) => b.z - a.z);
-            return projected;
-        }
+    document.addEventListener('keydown', (e) => {
+        if (e.key.toLowerCase() === 's') saveSnapshot();
+    });
 
-        // Main sim
-        let grid;
-        function init() {
-            canvas = document.getElementById('canvas');
-            ctx = canvas.getContext('2d');
-            canvas.width = WIDTH;
-            canvas.height = HEIGHT;
+    requestAnimationFrame(loop);
+}
 
-            // Positions
-            const positions = new Float32Array(GRID ** 3 * 3);
-            let idx = 0;
-            const half = GRID / 2;
-            for (let x = 0; x < GRID; x++) {
-                for (let y = 0; y < GRID; y++) {
-                    for (let z = 0; z < GRID; z++) {
-                        positions[idx++] = (x - half) * SCALE;
-                        positions[idx++] = (y - half) * SCALE;
-                        positions[idx++] = (z - half) * SCALE;
-                    }
-                }
-            }
+/* ------------- Drawing -------------- */
+function updateColors(projected) {
+    const p = grid.plasma;
+    const parity = grid.parity;
+    for (const pt of projected) {
+        const i = pt.i;
+        const plasmaVal = p[i];
+        const par = parity[i];
+        const hue = (time * 0.1 + par + plasmaVal) % 1.0;
+        const angle = hue * 2 * Math.PI;
+        const r = Math.abs(Math.sin(angle));
+        const g = Math.abs(Math.sin(angle + 2.0));
+        const b = Math.abs(Math.sin(angle + 4.0));
+        const a = 0.35 + 0.65 * plasmaVal;
+        pt.r = r; pt.g = g; pt.b = b; pt.a = a; pt.plasma = plasmaVal;
+    }
+}
 
-            grid = new PhaseGrid(GRID);
+function draw() {
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-            // Mouse interaction for rotation
-            canvas.addEventListener('mousemove', (e) => {
-                rotX = (e.clientY / HEIGHT - 0.5) * Math.PI;
-                rotY = (e.clientX / WIDTH - 0.5) * Math.PI * 2;
-            });
+    const viewport = [0, 0, WIDTH, HEIGHT];
+    const projected = projectPoints(positions, rotX, rotY, viewport);
+    updateColors(projected);
 
-            // Key events
-            document.addEventListener('keydown', (e) => {
-                if (e.key.toLowerCase() === 's') saveSnapshot();
-            });
+    // painter's algorithm: draw farther points first (projected already sorted)
+    for (const pt of projected) {
+        // simple clipping: depth range and plasma threshold
+        if (!isFinite(pt.z)) continue;
+        if (pt.z > 3000 || pt.z < -4000) continue;
+        if (pt.plasma < 0.02) continue;
+        const radius = POINT_SIZE + 6 * pt.plasma;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+        const rr = Math.floor(pt.r * 255);
+        const gg = Math.floor(pt.g * 255);
+        const bb = Math.floor(pt.b * 255);
+        ctx.fillStyle = `rgba(${rr}, ${gg}, ${bb}, ${pt.a})`;
+        ctx.fill();
+    }
+}
 
-            animate();
-        }
+/* --------------- Loop --------------- */
+function loop() {
+    if (!paused) {
+        time += 1 / FPS;
+        grid.perturbLocal();
+        grid.breatheStep();
+    }
+    draw();
+    requestAnimationFrame(loop);
+}
 
-        function updateColors(projected) {
-            const p = grid.plasma;
-            const parity = grid.parity;
-            for (let pt of projected) {
-                const i = pt.i * 3;  // Flat index for plasma
-                const plasmaVal = p[pt.i];
-                const par = parity[pt.i];
-                const hue = (time * 0.1 + par + plasmaVal) % 1.0;
-                const angle = hue * 2 * Math.PI;
-                const r = Math.abs(Math.sin(angle));
-                const g = Math.abs(Math.sin(angle + 2));
-                const b = Math.abs(Math.sin(angle + 4));
-                const alpha = 0.35 + 0.65 * plasmaVal;
-                pt.r = r; pt.g = g; pt.b = b; pt.a = alpha;
-            }
-        }
+/* -------------- Utilities -------------- */
+function saveSnapshot() {
+    const link = document.createElement('a');
+    link.download = `phasecube_minimal_${Date.now()}.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+}
 
-        function draw() {
-            ctx.clearRect(0, 0, WIDTH, HEIGHT);
-            const viewport = [0, 0, WIDTH, HEIGHT];
+function togglePause() {
+    paused = !paused;
+    document.querySelector('#controls button:nth-child(2)').textContent = paused ? 'Resume' : 'Pause/Resume';
+}
 
-            // Simplified modelview/projection matrices as functions
-            const modelview = [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]];  // Identity base
-            const projection = [[1,0,0,0], [0,1,0,0], [0,0,-1,0], [0,0,-1,1]];  // Simple ortho for projection
+/* ----------------- Start ---------------- */
+window.onload = init;
 
-            const projected = projectPoints(positions, modelview, projection, viewport);
-            updateColors(projected);
-
-            for (let pt of projected) {
-                if (pt.z < -1 || pt.z > 1) continue;
-                if (pt.plasma < 0.05) continue;  // Skip low plasma
-                ctx.beginPath();
-                ctx.arc(pt.x, pt.y, POINT_SIZE + 6 * pt.plasma, 0, 2 * Math.PI);
-                ctx.fillStyle = `rgba(\( {Math.floor(pt.r*255)}, \){Math.floor(pt.g*255)}, \( {Math.floor(pt.b*255)}, \){pt.a})`;
-                ctx.fill();
-            }
-        }
-
-        function animate() {
-            if (!paused) {
-                time += 1 / FPS;
-                grid.perturbLocal();
-                grid.breatheStep();
-            }
-            draw();
-            requestAnimationFrame(animate);
-        }
-
-        function saveSnapshot() {
-            const link = document.createElement('a');
-            link.download = `phasecube_minimal_${Date.now()}.png`;
-            link.href = canvas.toDataURL();
-            link.click();
-        }
-
-        function togglePause() {
-            paused = !paused;
-            document.querySelector('button:nth-child(2)').textContent = paused ? 'Resume' : 'Pause/Resume';
-        }
-
-        // Init on load
-        window.onload = init;
-    </script>
+</script>
 </body>
 </html>
