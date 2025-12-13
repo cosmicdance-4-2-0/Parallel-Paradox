@@ -60,10 +60,10 @@ const Config = {
   SCALE: 24,
   FPS: 60,
   POINT_SIZE: 4,  // Crisper base
-  FLIP_P: 0.02,
-  PARITY_P: 0.01,
+  FLIP_P: 0.015,  // Dialed down slightly for less jitter
+  PARITY_P: 0.005,  // Further reduced for stability
   BASE_PATH_B_P: 0.73,
-  ALPHA: 0.18, // Unused (additive solid)
+  ALPHA: 0.18, // Re-enabled for smoother solid blending
   BIN_COUNT: 64,
   FFT_SIZE: 2048
 };
@@ -131,7 +131,7 @@ class InputLayer {
           const kernel = Math.exp(-dist2 * 2.4);
           const delta = energy * str * kernel;
           const idx = x + y*this.gridSize + z*this.gridSize*this.gridSize;
-          this.biasField[idx] += delta;
+          this.biasBiasField[idx] += delta;
         }
       }
     }
@@ -168,9 +168,9 @@ class PhaseGrid {
     this.parity = new Int8Array(this.n);
 
     for (let i=0; i<this.n; i++){
-      this.plasma[i] = (i % 2) ? 0.0 : 1.0;
-      this.liquid[i] = 0.5;
-      this.solid[i] = 0.0;
+      this.plasma[i] = Math.random() * 0.8 + 0.1;  // Softer random init, less stark than alternating
+      this.liquid[i] = Math.random() * 0.5;
+      this.solid[i] = Math.random() * 0.3;
       this.parity[i] = (Math.random()<0.5)?1:0;
     }
   }
@@ -190,13 +190,13 @@ class PhaseGrid {
       if (Math.random() < Config.PARITY_P) this.parity[i] ^= 1;
 
       const bias = sensoryBiasField ? sensoryBiasField[i] : 0;
-      const jitterScale = (Math.abs(bias) > 0.05) ? 0.005 * (1 + Math.abs(bias)) : 0;
-      this.liquid[i] += (this.parity[i] ? jitterScale : -jitterScale) * (Math.random()*0.5 + 0.5);
-      this.liquid[i] = (this.liquid[i] % 1 + 1) % 1;
+      const jitterScale = (Math.abs(bias) > 0.05) ? 0.003 * (1 + Math.abs(bias)) : 0.001;  // Reduced base jitter, thresholded
+      this.liquid[i] += (this.parity[i] ? jitterScale : -jitterScale) * (Math.random()*0.3 + 0.2);  // Tighter random range
+      this.liquid[i] = Math.max(0, Math.min(1, this.liquid[i]));  // Clamp instead of mod for stability
 
       if (sensoryBiasField) {
-        this.plasma[i] += bias * 0.01;
-        this.plasma[i] = (this.plasma[i] % 1 + 1) % 1;
+        this.plasma[i] += bias * 0.008;  // Gentler nudge
+        this.plasma[i] = Math.max(0, Math.min(1, this.plasma[i]));
       }
     }
   }
@@ -205,19 +205,24 @@ class PhaseGrid {
     const p0 = new Float32Array(this.plasma);
     const l0 = new Float32Array(this.liquid);
     const s0 = new Float32Array(this.solid);
+    const outL = new Float32Array(this.n);  // Buffers for safety
+    const outS = new Float32Array(this.n);
 
     for (let i=0; i<this.n; i++){
       const p = p0[i], l = l0[i], s = s0[i];
       const avg = (p + l + s)/3;
-      const selfDiff = Math.abs(p - l) + this.parity[i]*0.13;
+      const nb = Math.abs(p - this.neighborAvg(i)) + this.parity[i]*0.08;  // Revert to neighbor diff, softer parity
 
-      let probB = Config.BASE_PATH_B_P + (sensoryBiasField ? sensoryBiasField[i] * 0.1 : 0);
-      probB = Math.max(0.5, Math.min(0.95, probB));
+      let probB = Config.BASE_PATH_B_P + (sensoryBiasField ? sensoryBiasField[i] * 0.08 : 0);  // Softer bias influence
+      probB = Math.max(0.55, Math.min(0.92, probB));  // Narrower range for less chaos
 
-      const choice = (Math.random() < probB) ? selfDiff : avg;
-      this.liquid[i] = choice;
-      this.solid[i] = (s0[i] + choice) % 1.0;
+      const choice = (Math.random() < probB) ? nb : avg;
+      outL[i] = Math.max(0, Math.min(1, choice));  // Clamp
+      outS[i] = (s*(1-Config.ALPHA) + choice*Config.ALPHA);  // Re-enable blending for smoother solid evolution
     }
+
+    this.liquid = outL;
+    this.solid = outS;
   }
 }
 
@@ -279,7 +284,7 @@ const Rendering = {
       ctx.beginPath();
       ctx.arc(pt.x, pt.y, r, 0, Math.PI*2);
       const R = Math.round(pt.r * 255), G = Math.round(pt.g * 255), B = Math.round(pt.b * 255);
-      ctx.fillStyle = `rgba(\( {R}, \){G},\( {B}, \){pt.a})`;
+      ctx.fillStyle = `rgba(${R},${G},${B},${pt.a})`;  // Fixed template literal
       ctx.fill();
       drawn++;
     }
@@ -476,7 +481,7 @@ class UIManager {
       const hR = Math.floor(right[i] * (h - 10));
       actx.fillStyle = `rgb(0,${Math.floor(220*hL/(h-10)+30)},0)`;
       actx.fillRect(lx, h - 5 - hL, barW-1, hL);
-      actx.fillStyle = `rgb(\( {Math.floor(220*hR/(h-10)+30)},0, \){Math.floor(220*hR/(h-10)+30)})`;
+      actx.fillStyle = `rgb(${Math.floor(220*hR/(h-10)+30)},0,${Math.floor(220*hR/(h-10)+30)})`;  // Fixed template
       actx.fillRect(rx, h - 5 - hR, barW-1, hR);
     }
     actx.fillStyle = '#aaa'; actx.font = `${12*devicePixelRatio}px monospace`;
@@ -502,9 +507,7 @@ function loop() {
   }
   Rendering.draw(State.ctx, State.positions, State.rotX, State.rotY, State.grid, State.time, State.canvas.width, State.canvas.height);
   const overlay = document.getElementById('overlay');
-  overlay.textContent = `PhaseCube — Hearing Test 0004.3
-GRID \( {Config.GRID} | Base p(B) \){Config.BASE_PATH_B_P.toFixed(2)} | Ears ${State.earsActive ? 'ON' : 'OFF'}
-Use sliders to tweak kernel strength / decay / base prob.`;
+  overlay.textContent = `PhaseCube — Hearing Test 0004.3\nGRID ${Config.GRID} | Base p(B) ${Config.BASE_PATH_B_P.toFixed(2)} | Ears ${State.earsActive ? 'ON' : 'OFF'}\nUse sliders to tweak kernel strength / decay / base prob.`;  // Fixed template
   if (State.ui) State.ui.drawAnalyzer();
 }
 
