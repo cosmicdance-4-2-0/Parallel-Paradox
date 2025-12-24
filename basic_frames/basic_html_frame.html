@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- TODO: Charset declared early, for predictable parsing across all environments -->
+    <meta charset="UTF-8">
+
+    <!-- TODO: Viewport policy, for responsive behavior on all devices including embedded WebViews -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- TODO: Describe application purpose, for SEO, sharing, and future indexing -->
+    <meta name="description" content="TODO: Describe the application succinctly, for discoverability">
+
+    <!-- TODO: Define relevant keywords, for SEO or internal search tooling -->
+    <meta name="keywords" content="TODO, TODO, TODO">
+
+    <!-- TODO: Author metadata, for attribution and long-term stewardship -->
+    <meta name="author" content="Christopher 'Kisuul' Lohman">
+    
+    <!-- TODO: Application title, for browser tabs, OS-level UI, and PWA manifests -->
+    <title>TODO: Application Name</title>
+    
+    <!-- TODO: Minimal reset, for predictable cross-browser styling without heavy normalization -->
+    <style>
+        /* TODO: Universal box-model reset, for layout sanity and composability */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* TODO: Root typography and color baseline, for global consistency */
+        html, body {
+            height: 100%;
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.5;
+            background: #000; /* TODO: Replace with theme system if needed */
+            color: #fff;      /* TODO: Replace with theme system if needed */
+        }
+        
+        /* TODO: Main application shell, for predictable vertical composition */
+        #app {
+            width: 100%;
+            height: 100%;
+            display: grid;
+
+            /* TODO: Grid layout chosen, for simple header / body / footer separation */
+            grid-template-rows: auto 1fr auto;
+        }
+        
+        /* TODO: Header and footer styling, for consistent padding and alignment */
+        header, footer {
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        /* TODO: Main content container, delegating scroll responsibility to children */
+        main {
+            overflow: hidden; /* TODO: Prevent double scrollbars, let surfaces decide */
+            position: relative; /* TODO: Anchor for absolutely positioned layers */
+        }
+        
+        /* TODO: Primary render target, for canvas-based rendering systems */
+        #render-target {
+            width: 100%;
+            height: 100%;
+            display: block;
+
+            /* TODO: Consider devicePixelRatio scaling in JS, not CSS */
+        }
+
+        /* TODO: DOM render target, for overlays, UI, SVG, or fallback content */
+        #dom-target {
+            position: absolute;
+            inset: 0;
+
+            /* TODO: Pointer-events policy, depending on UI layering strategy */
+        }
+    </style>
+</head>
+<body>
+    <!-- TODO: Root application container, single mount point for everything -->
+    <div id="app">
+
+        <!-- TODO: Application header, optional and replaceable -->
+        <header>
+            <!-- TODO: Application title or branding -->
+            <h1>TODO: App Title</h1>
+
+            <!-- TODO: Navigation container, for routing or view switching -->
+            <nav>
+                <!-- TODO: Insert navigation links or controls as needed -->
+            </nav>
+        </header>
+        
+        <!-- TODO: Main content region, intentionally unopinionated -->
+        <main>
+
+            <!-- TODO: Canvas surface, for 2D, WebGL, WebGPU, or custom rendering -->
+            <canvas id="render-target"></canvas>
+            
+            <!-- TODO: DOM surface, for UI, HUDs, debug overlays, or accessibility -->
+            <div id="dom-target"></div>
+
+        </main>
+        
+        <!-- TODO: Application footer, for metadata, controls, or diagnostics -->
+        <footer>
+            <!-- TODO: Author signature and build timestamp, for traceability -->
+            <p>TODO: Author, Version, Build Date</p>
+        </footer>
+    </div>
+
+    <!-- TODO: Core application module, intentionally minimal and self-contained -->
+    <script type="module">
+        // TODO: Central app object, acting as a replaceable orchestration layer
+        const app = {
+            // TODO: Cache primary render targets, for performance and clarity
+            canvas: document.getElementById('render-target'),
+            dom: document.getElementById('dom-target'),
+
+            // TODO: Rendering context handle, type depends on renderer
+            ctx: null,
+            
+            // TODO: Initialize rendering backend, for flexible graphics pipelines
+            initRenderer(type = '2d') {
+                // TODO: Guard against unsupported contexts
+                if (type === '2d' && this.canvas.getContext) {
+                    this.ctx = this.canvas.getContext('2d');
+                }
+
+                // TODO: Extend here for 'webgl', 'webgl2', 'webgpu', 'three', etc.
+                // TODO: Abstract renderer selection if multiple backends coexist
+            },
+            
+            // TODO: Main update loop, intentionally narrow and replaceable
+            update() {
+                // TODO: Insert simulation, rendering, or scheduling logic here
+
+                // TODO: Consider fixed timestep vs variable timestep if simulation-heavy
+                requestAnimationFrame(() => this.update());
+            },
+            
+            // TODO: Application bootstrap, responsible for startup order
+            start() {
+                // TODO: Select renderer based on capability detection or config
+                this.initRenderer('2d');
+
+                // TODO: Initialize input, state, assets, or services here
+                this.update();
+            }
+        };
+        
+        // TODO: DOM readiness guard, for predictable startup timing
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => app.start());
+        } else {
+            app.start();
+        }
+
+        // TODO: Expose app for debugging only if needed
+        // window.app = app;
+    </script>
+</body>
+</html>
