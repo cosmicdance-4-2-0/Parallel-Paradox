@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhaseCube Delta (L7Q9XK) — Multi-Layer Dreaming Swarm</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #05060a;
+      --panel: rgba(20, 24, 36, 0.8);
+      --accent: #7cf1ff;
+      --muted: #9fb3c8;
+      --warn: #ffbf69;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      background: radial-gradient(circle at 20% 20%, #0c1224, #05060a 50%);
+      color: #f4f7ff;
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+    }
+
+    header, footer {
+      padding: 0.75rem 1rem;
+      background: var(--panel);
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.1rem;
+      letter-spacing: 0.03em;
+    }
+
+    header small {
+      color: var(--muted);
+    }
+
+    #app {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 1rem;
+      padding: 1rem;
+    }
+
+    #controls {
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    #controls h2 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0.02em;
+    }
+
+    .field {
+      display: grid;
+      gap: 0.35rem;
+      font-size: 0.95rem;
+    }
+
+    label {
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    button {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: linear-gradient(135deg, rgba(124, 241, 255, 0.12), rgba(124, 241, 255, 0.04));
+      color: #f4f7ff;
+      padding: 0.6rem 0.9rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.2s ease;
+    }
+
+    button:hover { transform: translateY(-1px); border-color: rgba(124, 241, 255, 0.6); }
+
+    #canvas-wrap {
+      position: relative;
+      background: #02030a;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    #view {
+      width: 100%;
+      height: calc(100vh - 200px);
+      display: block;
+      background: #000;
+    }
+
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 0.6rem 0.8rem;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      color: var(--muted);
+      font-size: 0.9rem;
+      background: linear-gradient(180deg, rgba(5, 6, 10, 0.72), rgba(5, 6, 10, 0));
+    }
+
+    footer {
+      color: var(--muted);
+      font-size: 0.9rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PhaseCube Delta — Multi-Layer Dreaming Swarm <small>(DeltaID: L7Q9XK)</small></h1>
+  </header>
+
+  <div id="app">
+    <section id="controls">
+      <h2>Controls</h2>
+      <div class="field">
+        <label>Noise (plasma flip rate) <span id="noiseValue"></span></label>
+        <input type="range" id="noise" min="0.0" max="0.05" step="0.0005" value="0.01">
+      </div>
+      <div class="field">
+        <label>Cross-talk (grid coupling) <span id="coupleValue"></span></label>
+        <input type="range" id="couple" min="0.0" max="0.25" step="0.005" value="0.08">
+      </div>
+      <div class="field">
+        <label>Plasticity (rewire probability) <span id="plasticityValue"></span></label>
+        <input type="range" id="plasticity" min="0.0" max="0.1" step="0.002" value="0.02">
+      </div>
+      <div class="field">
+        <label>Delay length (frames) <span id="delayValue"></span></label>
+        <input type="range" id="delay" min="16" max="240" step="8" value="96">
+      </div>
+      <button id="pause">Pause (Space)</button>
+      <p style="color: var(--muted); margin:0;">Bias responds softly to history; influence never overwrites state. TODO: Add audio bias for live singing/streaming.</p>
+    </section>
+
+    <section id="canvas-wrap">
+      <canvas id="view" width="960" height="720"></canvas>
+      <div id="overlay">
+        <div>Coherence: <span id="coherence">0.00</span> | Entropy: <span id="entropy">0.00</span></div>
+        <div>Delay Tap: <span id="delayTap">0</span></div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <div>Minimal, modular, and tunable. Influence allowed; control denied.</div>
+    <div>TODO: Pipe metrics to IndexedDB for long-horizon inspection.</div>
+  </footer>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
