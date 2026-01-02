@@ -1,0 +1,14 @@
+{
+  "name": "lkb-delta-lkbx52d7m9q3",
+  "version": "0.1.0",
+  "description": "Headless PhaseCube/Lyriel lattice runner with lens-aware bias gating and forgiveness damping.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node src/runner.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
