@@ -1,0 +1,13 @@
+{
+  "name": "lkb20250329x7n4",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Lens-aware dual-grid PhaseCube scenario runner for Delta LKB20250329X7N4.",
+  "scripts": {
+    "start": "node src/simulation.js",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.0"
+  }
+}

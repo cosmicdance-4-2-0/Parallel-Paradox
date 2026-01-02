@@ -1,0 +1,106 @@
+{
+  "delta_id": "LKB20250329X7N4",
+  "created_utc": "2026-01-02T19:27:38Z",
+  "source_paths_analyzed": [
+    "docs",
+    "prototypes/LKB_POCs",
+    "prototypes/Toys",
+    "prototypes/AI_Deltas/LKB"
+  ],
+  "source_vectors": [
+    {
+      "id": "SV1",
+      "path": "docs/Parallel-Paradox-Design.md",
+      "why": "Canonical design map enforcing decentralized, harmonic, anti-singularity framing.",
+      "constraints": [
+        "Maintain modular, decentralized behaviors",
+        "Use harmonic safeguards to avoid runaway dynamics"
+      ]
+    },
+    {
+      "id": "SV2",
+      "path": "prototypes/LKB_POCs/readme.md",
+      "why": "PhaseCube ethos: influence-only biasing, non-collapse via noise/decay, minimalism.",
+      "constraints": [
+        "Bias must not overwrite state",
+        "Keep implementation human-readable"
+      ]
+    },
+    {
+      "id": "SV3",
+      "path": "prototypes/LKB_POCs/phasecube_dreaming_0001.html",
+      "why": "Prototype mapping audio to bias fields and exposing tunables (Path B, ALPHA).",
+      "constraints": [
+        "Route inputs into soft bias fields",
+        "Preserve tunable Path B and damping parameters"
+      ]
+    },
+    {
+      "id": "SV4",
+      "path": "prototypes/Readme.md",
+      "why": "System architecture + config for 16^3 lattice and path blending knobs.",
+      "constraints": [
+        "Retain noise guards and path-blend control",
+        "Use ALPHA-style damping for memory"
+      ]
+    },
+    {
+      "id": "SV5",
+      "path": "prototypes/AI_Deltas/LKB/LKB20250314A1B2/README.md",
+      "why": "Lens-aware headless lattice with forgiveness damping and bias decay.",
+      "constraints": [
+        "Lens mixer steers Path B/damping",
+        "Keep bias decaying and influence-only",
+        "Include tests"
+      ]
+    },
+    {
+      "id": "SV6",
+      "path": "prototypes/AI_Deltas/LKB/LKBX24M9Q7P1/README.md",
+      "why": "Lens-guided multi-grid swarm with echo/delay coupling.",
+      "constraints": [
+        "Cross-talk must stay soft",
+        "Lens presets modulate updates"
+      ]
+    },
+    {
+      "id": "SV7",
+      "path": "prototypes/LKB_POCs/AI_Deltas/A6P9Q4/README.md",
+      "why": "Tri-grid lens stack with delay hooks and TODOs for audio/WebGL.",
+      "constraints": [
+        "Expose lens tunables",
+        "Leave renderer/audio hooks for later"
+      ]
+    },
+    {
+      "id": "SV8",
+      "path": "prototypes/LKB_POCs/K5N3Q8/README.md",
+      "why": "Pathfinder modular delta emphasizing forgiveness and bias driver.",
+      "constraints": [
+        "Bias remains influence-only",
+        "Harmonic forgiveness guardrail"
+      ]
+    },
+    {
+      "id": "SV9",
+      "path": "prototypes/LKB_POCs/AI_Deltas/B4M7Q9/README.md",
+      "why": "Bias-aware multi-grid with damping sliders and overlays.",
+      "constraints": [
+        "Cross-grid coupling stays gentle",
+        "Damping softens dispersion spikes"
+      ]
+    },
+    {
+      "id": "SV10",
+      "path": "prototypes/Toys/lkb_agi_0001.html",
+      "why": "Minimal PhaseCube rewrite reinforcing baseline tunables and UI-light approach.",
+      "constraints": [
+        "Keep controls simple and dependency-light",
+        "Preserve baseline flip/parity/pathB knobs"
+      ]
+    }
+  ],
+  "parent_delta_ids": [],
+  "summary": "Headless dual-grid scenario runner with lens-gated path blending, decaying bias pulses, and forgiveness damping plus tests.",
+  "breaking_changes": false
+}
