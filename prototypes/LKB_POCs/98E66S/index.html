@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="PhaseCube – Delta upgrade path prototype (DeltaID 98E66S). Modular, tunable, audio-biased swarm lattice.">
+  <title>PhaseCube — Delta 98E66S</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div>
+        <p class="eyebrow">PhaseCube | Lyriel Kairi Brain (Delta 98E66S)</p>
+        <h1>Dreaming Swarm — Modular Upgrade Track</h1>
+        <p class="lede">Audio-biased ternary lattice with harmonic damping and tunable exploration weights.</p>
+      </div>
+      <div class="header-actions">
+        <button id="btn-reset">Reset</button>
+        <button id="btn-pause" aria-pressed="false">Pause</button>
+        <button id="btn-snapshot">Snapshot</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="canvas-shell">
+        <canvas id="render-surface" aria-label="PhaseCube visualization"></canvas>
+        <div id="hud">
+          <div><strong>DeltaID:</strong> <span id="delta-id">98E66S</span></div>
+          <div><strong>Mode:</strong> <span id="mode-label">synth</span></div>
+          <div><strong>FPS:</strong> <span id="fps-label">—</span></div>
+          <div><strong>Energy:</strong> <span id="energy-label">—</span></div>
+        </div>
+      </section>
+
+      <section id="sidebar">
+        <div class="panel">
+          <h2>Input</h2>
+          <div class="control-row">
+            <label for="mode-select">Source</label>
+            <select id="mode-select">
+              <option value="synth">Synth (safe default)</option>
+              <option value="mic">Live Mic</option>
+              <option value="file">Audio File</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <label for="input-strength">Bias Strength</label>
+            <input id="input-strength" type="range" min="0" max="0.4" step="0.01">
+            <span class="value" data-for="input-strength"></span>
+          </div>
+          <div class="control-row">
+            <label for="input-decay">Bias Decay</label>
+            <input id="input-decay" type="range" min="0.7" max="0.99" step="0.01">
+            <span class="value" data-for="input-decay"></span>
+          </div>
+          <div class="control-row">
+            <label for="input-radius">Bias Radius</label>
+            <input id="input-radius" type="range" min="1" max="6" step="0.5">
+            <span class="value" data-for="input-radius"></span>
+          </div>
+          <p class="hint">Low frequencies push deeper (Z); stereo pan tugs left/right.</p>
+          <input id="file-picker" type="file" accept="audio/*" hidden>
+        </div>
+
+        <div class="panel">
+          <h2>Swarm</h2>
+          <div class="control-row">
+            <label for="flip-p">Phase Flip Noise</label>
+            <input id="flip-p" type="range" min="0" max="0.1" step="0.002">
+            <span class="value" data-for="flip-p"></span>
+          </div>
+          <div class="control-row">
+            <label for="parity-p">Parity Flip</label>
+            <input id="parity-p" type="range" min="0" max="0.06" step="0.002">
+            <span class="value" data-for="parity-p"></span>
+          </div>
+          <div class="control-row">
+            <label for="path-b">Path B Weight</label>
+            <input id="path-b" type="range" min="0" max="1" step="0.01">
+            <span class="value" data-for="path-b"></span>
+          </div>
+          <div class="control-row">
+            <label for="alpha">Memory Alpha</label>
+            <input id="alpha" type="range" min="0" max="0.6" step="0.01">
+            <span class="value" data-for="alpha"></span>
+          </div>
+          <div class="control-row">
+            <label for="forgiveness">Forgiveness</label>
+            <input id="forgiveness" type="range" min="0" max="1" step="0.05">
+            <span class="value" data-for="forgiveness"></span>
+          </div>
+          <p class="hint">Harmonic damping keeps the lattice from collapsing or overheating.</p>
+        </div>
+
+        <div class="panel">
+          <h2>Rendering</h2>
+          <div class="control-row">
+            <label for="point-size">Point Size</label>
+            <input id="point-size" type="range" min="1" max="10" step="0.5">
+            <span class="value" data-for="point-size"></span>
+          </div>
+          <div class="control-row">
+            <label for="spin-rate">Spin Rate</label>
+            <input id="spin-rate" type="range" min="-1" max="1" step="0.05">
+            <span class="value" data-for="spin-rate"></span>
+          </div>
+          <p class="hint">Drag the canvas to rotate manually. TODO: Add preset camera orbits.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Minimal but extensible. Add lenses, multi-grid coupling, or external memory buffers as follow-ons. | Snapshot saves a PNG.</p>
+    </footer>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
