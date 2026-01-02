@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PhaseCube Dual Lattice — H4K7M2P9Q3Z8</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <div class="title">
+        <h1>PhaseCube Dual Lattice</h1>
+        <p class="subtitle">Delta <span id="delta-id"></span></p>
+      </div>
+      <div class="controls">
+        <button id="btn-reset" aria-label="Reset simulation">Reset</button>
+        <button id="btn-pause" aria-label="Pause/resume simulation">Pause</button>
+        <button id="btn-snapshot" aria-label="Save PNG snapshot">Snapshot</button>
+        <div class="mode-switch">
+          <label>Input mode</label>
+          <div class="mode-buttons">
+            <button data-mode="synth" class="mode active">Synth</button>
+            <button data-mode="mic" class="mode">Mic</button>
+            <button data-mode="file" class="mode">File</button>
+            <input id="file-picker" type="file" accept="audio/*" hidden />
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <canvas id="render-surface" width="1200" height="800" aria-label="PhaseCube renderer"></canvas>
+      <section class="hud">
+        <div class="stat">
+          <h3>Energy</h3>
+          <p>A: <span id="energy-a">0</span></p>
+          <p>B: <span id="energy-b">0</span></p>
+        </div>
+        <div class="stat">
+          <h3>FPS</h3>
+          <p><span id="fps">0</span></p>
+          <p class="note">Spin + mouse drag to orbit.</p>
+        </div>
+        <div class="sliders">
+          <label>
+            Path B weight
+            <input id="pathb" type="range" min="0" max="1" step="0.01" />
+          </label>
+          <label>
+            Forgiveness
+            <input id="forgiveness" type="range" min="0" max="1" step="0.01" />
+          </label>
+          <label>
+            Shadow coupling
+            <input id="shadow" type="range" min="0" max="1" step="0.01" />
+          </label>
+          <label>
+            Memory weight
+            <input id="memory" type="range" min="0" max="1" step="0.01" />
+          </label>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./js/main.js"></script>
+  </body>
+</html>
