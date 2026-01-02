@@ -1,0 +1,105 @@
+{
+  "delta_id": "LKB20250326X7A9",
+  "created_utc": "2026-01-02T19:26:32Z",
+  "source_paths_analyzed": [
+    "docs/",
+    "prototypes/LKB_POCs/",
+    "prototypes/Toys/",
+    "prototypes/AI_Deltas/LKB/"
+  ],
+  "source_vectors": {
+    "SV1": {
+      "path": "docs/Parallel-Paradox-Design.md",
+      "why": "Canonical design map anchoring anti-singularity stance and harmonic safeguards.",
+      "constraints": [
+        "Maintain decentralization and anti-collapse posture",
+        "Retain harmonic balancing across system behaviors",
+        "Prefer additive, interpretable upgrades"
+      ]
+    },
+    "SV2": {
+      "path": "prototypes/LKB_POCs/readme.md",
+      "why": "Base PhaseCube ethos: influence-only bias, ternary phases, radical minimalism.",
+      "constraints": [
+        "Bias may nudge but never overwrite state",
+        "Preserve plasma/liquid/solid framing",
+        "Keep the implementation human-readable"
+      ]
+    },
+    "SV3": {
+      "path": "prototypes/LKB_POCs/phasecube_dreaming_0001.html",
+      "why": "Prototype HTML defining audio mapping, HUD cues, and tunable parameters.",
+      "constraints": [
+        "Map low/high freq and pan into spatial bias",
+        "Expose tunables for path selection and damping",
+        "Plan for overlays/metrics hooks"
+      ]
+    },
+    "SV4": {
+      "path": "prototypes/Toys/lkb_agi_0001.html",
+      "why": "Minimal 3D PhaseCube rewrite showcasing path B mixing and damping constants.",
+      "constraints": [
+        "Use toroidal neighbor sampling",
+        "Keep PATH_B/ALPHA tunable",
+        "Offer simple projection-friendly state"
+      ]
+    },
+    "SV5": {
+      "path": "prototypes/LKB_POCs/AI_Deltas/A6P9Q4/README.md",
+      "why": "Tri-grid lens-guided design with delay-line and structural plasticity hooks.",
+      "constraints": [
+        "Lens stack should steer bias and memory",
+        "Support delayed/echo influence without hard sync",
+        "Leave TODO hooks for scaling"
+      ]
+    },
+    "SV6": {
+      "path": "prototypes/LKB_POCs/AI_Deltas/B4M7Q9/README.md",
+      "why": "Bias-aware multi-grid coupling plus forgiveness damping and overlays.",
+      "constraints": [
+        "Bias pulses must decay quickly",
+        "Cross-grid influence stays soft",
+        "Surface metrics for coherence/dispersion"
+      ]
+    },
+    "SV7": {
+      "path": "prototypes/AI_Deltas/LKB/LKB20250314A1B2/README.md",
+      "why": "Headless lens-aware runner with bias plumbing and kenotic damping.",
+      "constraints": [
+        "Lens mixer modulates Path B and damping",
+        "Forgiveness activates on dispersion spikes",
+        "Bias represented procedurally when audio absent"
+      ]
+    },
+    "SV8": {
+      "path": "prototypes/AI_Deltas/LKB/D7F3L9P2Q5R8/README.md",
+      "why": "Python tri-grid runner using lens scheduling, bias delay, and kenotic safeguards.",
+      "constraints": [
+        "CLI-friendly, testable headless runner",
+        "Lens schedule must be explicit",
+        "Maintain toroidal neighbors and stochastic noise"
+      ]
+    },
+    "SV9": {
+      "path": "prototypes/Toys/hearing_test_0005.html",
+      "why": "Audio ingestion experiment mapping stereo FFT bins into grid bias.",
+      "constraints": [
+        "Low freq -> back, high freq -> front mapping",
+        "Stereo pan steers lateral bias",
+        "Bias remains influence-only and decays"
+      ]
+    },
+    "SV10": {
+      "path": "prototypes/LKB_POCs/AI_Deltas/NCECI6/README.md",
+      "why": "Lens fusion delta adding trace/imprint memory and bias routing through Systemic lens.",
+      "constraints": [
+        "Preserve dual-memory or echo-style persistence",
+        "Systemic lens should gate bias gain",
+        "Expose tunable lens profiles"
+      ]
+    }
+  },
+  "parent_delta_ids": [],
+  "summary": "Implements LKB20250326X7A9: a headless, audio-biased lens mixer that maps stereo FFT bins into a bounded PhaseCube lattice with kenotic forgiveness and testable CLI runner.",
+  "breaking_changes": false
+}
