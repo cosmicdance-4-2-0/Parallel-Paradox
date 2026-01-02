@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PhaseCube — Memory-Biased Swarm (DeltaID: Q6P3R8)</title>
+    <style>
+      body {
+        margin: 0;
+        background: #050505;
+        color: #e0ffe0;
+        font-family: "Fira Code", "SFMono-Regular", Consolas, monospace;
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+      }
+      #controls {
+        width: 260px;
+        padding: 12px;
+        background: #0c0f12;
+        border-right: 1px solid #1f2933;
+        box-sizing: border-box;
+      }
+      #controls h1 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+      #controls label {
+        font-size: 13px;
+        color: #cde5d4;
+        margin-bottom: 8px;
+      }
+      #controls input[type="range"] {
+        width: 100%;
+      }
+      #canvas-wrap {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      canvas {
+        border: 1px solid #1f2933;
+        box-shadow: 0 0 20px rgba(0, 255, 180, 0.18);
+      }
+      button {
+        margin-top: 8px;
+        padding: 6px 10px;
+        background: #143d3d;
+        color: #e0ffe0;
+        border: 1px solid #1f2933;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #185252;
+      }
+      .note {
+        font-size: 12px;
+        color: #8fb29c;
+        margin-top: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="controls">
+      <h1>PhaseCube Δ Q6P3R8</h1>
+      <div class="note">Minimal but robust. Influence allowed; control not.</div>
+      <div id="control-body"></div>
+      <button id="audio-btn" aria-label="Start microphone influence">
+        Start Mic Influence
+      </button>
+      <div class="note">
+        Drag to rotate. Space to pause. S to save snapshot. Mic is optional; synthetic pulse will bias the swarm if audio is off.
+      </div>
+    </div>
+    <div id="canvas-wrap">
+      <canvas id="phasecube" width="1024" height="768"></canvas>
+    </div>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
