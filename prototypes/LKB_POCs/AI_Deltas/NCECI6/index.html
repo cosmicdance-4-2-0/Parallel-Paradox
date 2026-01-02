@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhaseCube LensBridge — Delta NCECI6</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        body {
+            margin: 0;
+            background: #050507;
+            color: #f4f6ff;
+            overflow: hidden;
+        }
+        #hud {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(12, 12, 16, 0.7);
+            padding: 10px 12px;
+            border-radius: 8px;
+            box-shadow: 0 0 12px rgba(0,0,0,0.35);
+            backdrop-filter: blur(6px);
+            width: 300px;
+        }
+        h1 {
+            margin: 0 0 6px;
+            font-size: 18px;
+        }
+        button, select, input[type=range] {
+            width: 100%;
+            margin: 6px 0;
+            padding: 8px;
+            border-radius: 6px;
+            border: none;
+            font-size: 14px;
+            background: #171722;
+            color: #f4f6ff;
+        }
+        button:hover, select:hover {
+            background: #1f1f2c;
+            cursor: pointer;
+        }
+        .row {
+            display: flex;
+            gap: 8px;
+        }
+        .row > * {
+            flex: 1;
+        }
+        label {
+            display: block;
+            margin-top: 8px;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        #view {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        #status {
+            margin-top: 6px;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="view"></canvas>
+    <div id="hud">
+        <h1>PhaseCube LensBridge</h1>
+        <div class="row">
+            <button id="start">Start</button>
+            <button id="pause">Pause</button>
+        </div>
+        <button id="mic">Mic Bias</button>
+        <button id="save">Save PNG (S)</button>
+        <label for="profile">Lens Profile</label>
+        <select id="profile"></select>
+        <label for="harmonic">Harmonic Weight</label>
+        <input id="harmonic" type="range" min="0" max="1" step="0.05">
+        <label for="bias">Bias Gain</label>
+        <input id="bias" type="range" min="0" max="1.2" step="0.02">
+        <label for="trace">Trace Blend</label>
+        <input id="trace" type="range" min="0" max="0.6" step="0.02">
+        <div id="status">DeltaID: NCECI6 · Mic: off</div>
+    </div>
+    <script type="module" src="./main.js"></script>
+</body>
+</html>
