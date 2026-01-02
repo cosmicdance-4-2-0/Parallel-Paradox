@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhaseCube Delta DX7F9L2Q1A3B</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #020302; color: #d9f2d9; }
+    header, footer { padding: 0.75rem 1rem; background: rgba(0,0,0,0.8); border-bottom: 1px solid #0f1f0f; }
+    main { height: calc(100vh - 120px); display: grid; grid-template-rows: 1fr auto; }
+    #render { width: 100%; height: 100%; display: block; background: #050505; }
+    .controls { display: flex; gap: 0.5rem; padding: 0.75rem 1rem; background: rgba(0,0,0,0.85); border-top: 1px solid #0f1f0f; }
+    button { background: #0d2d0d; color: #c6f7c6; border: 1px solid #1c3f1c; padding: 0.4rem 0.75rem; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #114011; }
+    #status { font-size: 0.9rem; color: #9bd19b; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PhaseCube Δ DX7F9L2Q1A3B — Lens-Guided Tri-Grid</h1>
+    <p id="status">warming up…</p>
+  </header>
+  <main>
+    <canvas id="render"></canvas>
+    <div class="controls">
+      <button id="pause">Pause</button>
+      <button id="boost">Inject Bias Pulse</button>
+      <span>Lens-weighted tri-grid with synthetic bias. Keep mic off for now; bias is synthetic.</span>
+    </div>
+  </main>
+  <footer>
+    <small>Bounded dreaming swarm. Influence-only bias per DX7F9L2Q1A3B.</small>
+  </footer>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
