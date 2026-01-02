@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhaseCube Delta M8K3Z1</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="panel">
+      <header>
+        <h1>PhaseCube Delta</h1>
+        <p class="delta">DeltaID: <strong>M8K3Z1</strong></p>
+        <p class="hint">Minimal, tunable, dual-grid-ready swarm.</p>
+      </header>
+
+      <section class="control">
+        <h2>Lens Weights</h2>
+        <div class="slider-group" data-key="human">
+          <label for="human">Human / Cognitive</label>
+          <input type="range" id="human" min="0" max="1" step="0.01" value="0.4" />
+          <span class="value" id="human-val">0.40</span>
+        </div>
+        <div class="slider-group" data-key="predictive">
+          <label for="predictive">Transhuman / Predictive</label>
+          <input type="range" id="predictive" min="0" max="1" step="0.01" value="0.35" />
+          <span class="value" id="predictive-val">0.35</span>
+        </div>
+        <div class="slider-group" data-key="systemic">
+          <label for="systemic">Systemic / Network</label>
+          <input type="range" id="systemic" min="0" max="1" step="0.01" value="0.35" />
+          <span class="value" id="systemic-val">0.35</span>
+        </div>
+        <div class="slider-group" data-key="harmonic">
+          <label for="harmonic">Harmonic / Emergent</label>
+          <input type="range" id="harmonic" min="0" max="1" step="0.01" value="0.5" />
+          <span class="value" id="harmonic-val">0.50</span>
+        </div>
+      </section>
+
+      <section class="control">
+        <h2>Bias & Echo</h2>
+        <div class="slider-group" data-key="biasStrength">
+          <label for="biasStrength">Bias Pulse Strength</label>
+          <input type="range" id="biasStrength" min="0" max="1" step="0.01" value="0.28" />
+          <span class="value" id="biasStrength-val">0.28</span>
+        </div>
+        <div class="slider-group" data-key="biasRadius">
+          <label for="biasRadius">Bias Radius</label>
+          <input type="range" id="biasRadius" min="1" max="6" step="1" value="3" />
+          <span class="value" id="biasRadius-val">3</span>
+        </div>
+        <div class="slider-group" data-key="biasDecay">
+          <label for="biasDecay">Bias Decay</label>
+          <input type="range" id="biasDecay" min="0" max="1" step="0.01" value="0.12" />
+          <span class="value" id="biasDecay-val">0.12</span>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="echoToggle" />
+          <span>Enable Echo Grid (dual lattice coupling)</span>
+        </label>
+        <button id="pulse">Inject Bias Pulse</button>
+        <button id="reset">Reset Grids</button>
+      </section>
+
+      <section class="control">
+        <h2>Status</h2>
+        <p class="status">FPS: <span id="fps">0</span></p>
+        <p class="status">Liquid activity: <span id="activity">0.00</span></p>
+        <p class="status">Echo coupled: <span id="echo-status">off</span></p>
+      </section>
+    </aside>
+
+    <main class="viewport">
+      <canvas id="view" width="960" height="640"></canvas>
+    </main>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
