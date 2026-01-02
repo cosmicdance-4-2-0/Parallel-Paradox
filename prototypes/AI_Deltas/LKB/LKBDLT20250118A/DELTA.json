@@ -1,0 +1,93 @@
+{
+  "delta_id": "LKBDLT20250118A",
+  "created_utc": "2026-01-02T19:08:35Z",
+  "source_paths_analyzed": [
+    "docs/",
+    "prototypes/LKB_POCs/"
+  ],
+  "source_vectors": [
+    {
+      "id": "SV1",
+      "what": "docs/Parallel-Paradox-Design.md",
+      "why": "Canonical map of PhaseCube philosophy, principles, and glossary for swarm and lens alignment.",
+      "constraints": [
+        "Prioritize decentralized, anti-singularity behavior and mutual aid framing.",
+        "Keep harmonic stabilization to avoid runaway dynamics.",
+        "Treat PhaseCube as the entry point for Lyriel/Kairi swarm behaviors."
+      ]
+    },
+    {
+      "id": "SV2",
+      "what": "prototypes/LKB_POCs/readme.md",
+      "why": "Base PhaseCube POC definition emphasizing dreaming, boundedness, and non-collapsing ternary phases.",
+      "constraints": [
+        "Avoid goal-seeking and fixed-point convergence; preserve bounded stochastic dynamics.",
+        "Input should act as influence/bias rather than control or overwrite of state.",
+        "Maintain minimal, dependency-light, human-readable implementation style."
+      ]
+    },
+    {
+      "id": "SV3",
+      "what": "prototypes/Readme.md",
+      "why": "Detailed architecture and configuration variables for the 4096-agent PhaseCube including Path A/B branching.",
+      "constraints": [
+        "Expose tunable parameters (noise, path selection, damping) for experimentation.",
+        "Use toroidal neighborhood interactions with plasma/liquid/solid phases.",
+        "Balance exploration (Path B) against stability (Path A + ALPHA damping)."
+      ]
+    },
+    {
+      "id": "SV4",
+      "what": "Minimalaiagi.md",
+      "why": "Four-lens framework and harmonic fusion strategy guiding modular decision-making.",
+      "constraints": [
+        "Implement lens weighting that can rebalance decisions dynamically.",
+        "Keep modules modular and extensible for additional lenses or tunings.",
+        "Use harmonic adjustments to prevent runaway outcomes."
+      ]
+    },
+    {
+      "id": "SV5",
+      "what": "Minimalnode...wait...minimal.md",
+      "why": "Swarm consensus and oracle/witness framing aligning PhaseCube with Lyriel swarm mechanics.",
+      "constraints": [
+        "Favor distributed, gossip-like propagation over centralized controllers.",
+        "Allow stochastic oracle-style selection or parity to modulate updates.",
+        "Keep repository-style persistence by ensuring at least one witness/state survives noise."
+      ]
+    },
+    {
+      "id": "SV6",
+      "what": "Computation.md",
+      "why": "Kenotic N-body forgiveness operator for damping coupling when dispersion grows.",
+      "constraints": [
+        "Apply forgiveness when dispersion/entropy crosses a threshold to avoid collapse or fragmentation.",
+        "Log or expose forgiveness activations for interpretability.",
+        "Structure simulation loop so modulation is pluggable (additional kernels possible)."
+      ]
+    },
+    {
+      "id": "SV7",
+      "what": "prototypes/LKB_POCs/AI_Deltas/A6P9Q4/README.md",
+      "why": "Prior delta with tri-grid, lens-guided modulation, and delayed biasing, showcasing layered emergence.",
+      "constraints": [
+        "Preserve lens-guided modulation hooks and real-time retuning capability.",
+        "Support delay/echo style bias recirculation without overriding internal state.",
+        "Highlight interpretability via surfaced metrics/overlays or logs."
+      ]
+    },
+    {
+      "id": "SV8",
+      "what": "prototypes/LKB_POCs/AI_Deltas/T4H9K2/README.md",
+      "why": "Recent delta adding lens scheduler, echo bias bus, and input gain controls for PhaseCube.",
+      "constraints": [
+        "Blend lens presets smoothly to avoid abrupt transitions.",
+        "Include an echo/bias memory path with tunable weight.",
+        "Expose input gain knobs so external influence remains bounded."
+      ]
+    }
+  ],
+  "parent_delta_ids": [],
+  "summary": "Adds a modular, lens-aware PhaseCube-inspired simulator with kenotic forgiveness damping and bias echoing, packaged as a self-contained Python delta with tests and docs.",
+  "breaking_changes": false
+}
