@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PhaseCube — Δ LKB7X9G2</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        background: #02040a;
+        color: #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+      }
+      header {
+        text-align: center;
+      }
+      .panel {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        width: min(960px, 96vw);
+      }
+      fieldset {
+        border: 1px solid #1f2937;
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      legend {
+        padding: 0 6px;
+        color: #93c5fd;
+        font-weight: 600;
+      }
+      label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px;
+        margin: 6px 0;
+      }
+      input[type="range"], select {
+        width: 140px;
+      }
+      button {
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+      #phasecube {
+        border-radius: 10px;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+      }
+      small {
+        color: #9ca3af;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>PhaseCube — Lyriel Kairi Brain</h1>
+      <p>
+        DeltaID <strong>LKB7X9G2</strong> · Modulated by four lenses · Biasable but never commanded.
+      </p>
+      <p id="status">Booting…</p>
+    </header>
+
+    <canvas id="phasecube" width="640" height="640"></canvas>
+
+    <div class="panel">
+      <fieldset>
+        <legend>Run</legend>
+        <div style="display: flex; gap: 8px; align-items: center">
+          <button id="toggle">Pause/Resume</button>
+          <button id="reset">Soft Reset</button>
+        </div>
+        <small>TODO: Add keyboard bindings and presets, for live performance ergonomics.</small>
+      </fieldset>
+
+      <fieldset>
+        <legend>Input Bias</legend>
+        <label>
+          Mode
+          <select id="mode">
+            <option value="muted">Muted</option>
+            <option value="orbit">Orbit (slow drift)</option>
+            <option value="jitter">Jitter (microbursts)</option>
+          </select>
+        </label>
+        <label>
+          Strength <span id="strengthValue">0.42</span>
+          <input id="strength" type="range" min="0" max="1.2" step="0.02" value="0.42" />
+        </label>
+        <small>Bias feeds the plasma phase; influence, never command.</small>
+      </fieldset>
+
+      <fieldset>
+        <legend>Lens Weights</legend>
+        <label>
+          Human
+          <input type="range" min="0" max="0.6" step="0.02" value="0.24" data-lens="human" />
+          <span>0.24</span>
+        </label>
+        <label>
+          Predictive
+          <input type="range" min="0" max="0.6" step="0.02" value="0.26" data-lens="predictive" />
+          <span>0.26</span>
+        </label>
+        <label>
+          Systemic
+          <input type="range" min="0" max="0.6" step="0.02" value="0.22" data-lens="systemic" />
+          <span>0.22</span>
+        </label>
+        <label>
+          Harmonic
+          <input type="range" min="0" max="0.6" step="0.02" value="0.28" data-lens="harmonic" />
+          <span>0.28</span>
+        </label>
+        <small>
+          Four lenses modulate path A/B mixing. Harmonic balances exploration vs stability.
+          TODO: Add lens presets mapped to narrative moods.
+        </small>
+      </fieldset>
+    </div>
+
+    <fieldset style="width: min(960px, 96vw)">
+      <legend>Notes</legend>
+      <ul>
+        <li>Human-readable modules with TODO markers for multi-grid scaling and WebGL swap-in.</li>
+        <li>Input bridge offers muted, orbital drift, and jitter microburst biasing.</li>
+        <li>Lens controller ties human/predictive/systemic/harmonic weights to path mixing.</li>
+        <li>
+          TODO: Stream snapshots to an IndexedDB “dream log” for later playback and comparison against future
+          deltas.
+        </li>
+      </ul>
+    </fieldset>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
