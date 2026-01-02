@@ -1,0 +1,119 @@
+{
+  "delta_id": "260102193932_UAOPAG61",
+  "created_utc": "2026-01-02T19:41:39+00:00",
+  "status": "ok",
+  "source_paths_analyzed": [
+    "docs/",
+    "prototypes/LKB_POCs/",
+    "prototypes/Toys/",
+    "prototypes/AI_Deltas/LKB/"
+  ],
+  "source_vectors": {
+    "SV1": {
+      "ref": "docs/Parallel-Paradox-Design.md",
+      "why_it_matters": "Canonical design map stressing anti-singularity stance, harmonic safety, and decentralized swarm behaviors.",
+      "extracted_constraints": [
+        "Preserve anti-collapse harmonic safeguards and decentralization in any upgrade path.",
+        "Keep systems human-scale and interpretable rather than control-oriented.",
+        "Align upgrades with four-lens framing and kenotic forgiveness themes."
+      ]
+    },
+    "SV2": {
+      "ref": "prototypes/LKB_POCs/readme.md",
+      "why_it_matters": "Defines PhaseCube ethos: bounded, non-collapsing, influence-not-command biasing with minimal, hackable structure.",
+      "extracted_constraints": [
+        "Bias inputs must influence rather than overwrite state and remain bounded.",
+        "Maintain minimal, dependency-light, and tunable architecture.",
+        "Protect against convergence and runaway excitation via stochastic guards."
+      ]
+    },
+    "SV3": {
+      "ref": "prototypes/LKB_POCs/phasecube_dreaming_0001.html",
+      "why_it_matters": "Concrete HTML prototype showing audio-to-bias mapping, tunables (Path B, decay, strength), and rendering expectations.",
+      "extracted_constraints": [
+        "Map input energy to spatial bias (depth/pan) with decay and clamping.",
+        "Expose tunable probabilities (e.g., BASE_PATH_B_P) and input decay/strength.",
+        "Keep simulation looping with pause/save controls and visible metrics."
+      ]
+    },
+    "SV4": {
+      "ref": "prototypes/LKB_POCs/Q6P3R8/main.js",
+      "why_it_matters": "Implements tri-grid dialogue with delay-line memory and blended bias from audio or synthetic pulses.",
+      "extracted_constraints": [
+        "Support multi-grid orchestration (core/echo/memory) with shared biasing.",
+        "Blend bias fields with delayed memory while clamping magnitude.",
+        "Track and expose core metrics such as energy and dispersion each step."
+      ]
+    },
+    "SV5": {
+      "ref": "prototypes/LKB_POCs/Q6P3R8/config.js",
+      "why_it_matters": "Centralizes tunables including forgiveness damping, path probabilities, and bias weights for commodity hardware.",
+      "extracted_constraints": [
+        "Keep defaults modest (grid sizing, fps) to run on commodity machines.",
+        "Expose weights for memory, crosstalk, and forgiveness damping.",
+        "Provide configurable path selection probabilities and alpha damping."
+      ]
+    },
+    "SV6": {
+      "ref": "prototypes/LKB_POCs/Q6P3R8/README.md",
+      "why_it_matters": "Design notes for memory-biased upgrade: tri-grid dialogue, delay-driven bias, interpretability overlays, and tunable safeguards.",
+      "extracted_constraints": [
+        "Document tri-grid roles and bias routing alongside interpretability metrics.",
+        "Retain structural plasticity hooks as TODO-style expansion points.",
+        "Keep input influence soft, memory-biased, and non-destructive."
+      ]
+    },
+    "SV7": {
+      "ref": "prototypes/Toys/Galaxybrain_minimal.py",
+      "why_it_matters": "Minimal PhaseCube rewrite emphasizing periodic topology, local perturbations, and vectorized path A/B blending.",
+      "extracted_constraints": [
+        "Use wrap-around topology and local perturbations instead of global flips.",
+        "Implement path A/B selection with parity influence and memory blending.",
+        "Expose small, interpretable tunables (flip prob, path B prob, alpha)."
+      ]
+    },
+    "SV8": {
+      "ref": "prototypes/AI_Deltas/LKB/LKBX52D7M9Q3/README.md",
+      "why_it_matters": "Prior delta establishing lens-gated path B control, kenotic forgiveness, and procedural bias pulses with oracle snapshots.",
+      "extracted_constraints": [
+        "Include lens mixing that clamps path B and damping based on metrics.",
+        "Model bias pulses with decay/strength/radius inspired by audio pan/depth.",
+        "Log or expose oracle/witness sampling for lineage visibility."
+      ]
+    },
+    "SV9": {
+      "ref": "prototypes/AI_Deltas/LKB/LKBX52D7M9Q3/src/grid.js",
+      "why_it_matters": "Concrete lattice step implementation applying lens mix, bias gain, damping, and oracle selection over toroidal neighbors.",
+      "extracted_constraints": [
+        "Separate metric gathering (energy, dispersion, bias load) from stepping logic.",
+        "Apply lensMix parameters (pathBProbability, biasGain, damping) during updates.",
+        "Maintain oracle selection sampling with parity/trace weighting."
+      ]
+    },
+    "SV10": {
+      "ref": "prototypes/Toys/lkb_agi_0001.html",
+      "why_it_matters": "Clean minimal PhaseCube with pause/snapshot controls, depth sorting renderer, and path B-driven liquid updates.",
+      "extracted_constraints": [
+        "Provide simple run controls (pause/resume, snapshot hooks) for demos.",
+        "Render or report sorted outputs to keep interpretation clear.",
+        "Preserve stochastic path B branching with alpha-based memory blending."
+      ]
+    }
+  },
+  "parent_delta_ids": [],
+  "summary": "Adds a new LKB delta that formalizes lens-gated, tri-grid bias routing with commodity-safe tunables, bias pulses, and oracle sampling, keeping influence-only ethos and interpretability from prior prototypes.",
+  "breaking_changes": false,
+  "assumptions": [
+    {
+      "label": "Treat docs/Parallel-Paradox-Design.md as the base README for SV1 because no docs/README.md file exists.",
+      "type": "Inference",
+      "rationale": "It is the only canonical design document at docs/ root and maps project principles referenced elsewhere."
+    },
+    {
+      "label": "Node.js ≥18 with built-in test runner is available for executing the new scripts and tests.",
+      "type": "Inference",
+      "rationale": "Chosen to avoid external dependencies while supplying required smoke/unit tests."
+    }
+  ],
+  "sensitive_files_skipped": []
+}
