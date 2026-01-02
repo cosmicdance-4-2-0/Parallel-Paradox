@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="PhaseCube Delta D7X2LQ8 — Lens-tuned harmonic memory experiment.">
+  <title>PhaseCube Delta — D7X2LQ8</title>
+  <style>
+    /* Minimal, readable styling; keep everything tweakable by hand. */
+    :root {
+      color-scheme: dark;
+      --bg: #060608;
+      --panel: rgba(20, 22, 26, 0.8);
+      --accent: #7fe07f;
+      --muted: #a9b3c7;
+      --border: #262c38;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: #e6ecf7;
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+    header, footer {
+      padding: 0.75rem 1rem;
+      text-align: center;
+      background: rgba(0,0,0,0.35);
+      border-bottom: 1px solid var(--border);
+    }
+    footer { border-top: 1px solid var(--border); border-bottom: none; }
+    main {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) 1fr;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #000;
+    }
+    aside {
+      padding: 1rem;
+      border-right: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(18,22,30,0.75), rgba(10,12,16,0.9));
+      overflow-y: auto;
+      gap: 0.75rem;
+      display: flex;
+      flex-direction: column;
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 1.2rem; letter-spacing: 0.03em; }
+    h2 { font-size: 1rem; color: var(--muted); }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem;
+      display: grid;
+      gap: 0.5rem;
+    }
+    .row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    label { font-size: 0.9rem; color: var(--muted); }
+    input[type="range"] { width: 100%; }
+    button {
+      background: #0f141c;
+      color: var(--accent);
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.75rem;
+      border-radius: 8px;
+      font: inherit;
+      cursor: pointer;
+    }
+    button:active { transform: translateY(1px); }
+    .metrics {
+      position: absolute;
+      right: 14px;
+      top: 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.5rem 0.75rem;
+      font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: 0.85rem;
+      min-width: 180px;
+    }
+    small { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PhaseCube Delta — Lens-Tuned Harmonic Memory</h1>
+    <small>DeltaID: D7X2LQ8 · Influence, not command · Minimal and human-readable</small>
+  </header>
+
+  <main>
+    <aside>
+      <section class="panel">
+        <h2>Run controls</h2>
+        <div class="row">
+          <button id="pause-btn">Pause</button>
+          <button id="reset-btn">Reset</button>
+          <button id="pulse-btn">Pulse bias</button>
+        </div>
+        <div class="row">
+          <label><input type="checkbox" id="autopulse" checked> Auto-pulse</label>
+          <label><input type="checkbox" id="show-mesh"> Show mesh</label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Lenses</h2>
+        <div class="row"><label>Human</label><input type="range" id="lens-human" min="0" max="1" step="0.01" value="0.25"></div>
+        <div class="row"><label>Predictive</label><input type="range" id="lens-predictive" min="0" max="1" step="0.01" value="0.25"></div>
+        <div class="row"><label>Systemic</label><input type="range" id="lens-systemic" min="0" max="1" step="0.01" value="0.25"></div>
+        <div class="row"><label>Harmonic</label><input type="range" id="lens-harmonic" min="0" max="1" step="0.01" value="0.25"></div>
+        <small>Weights auto-normalize to keep the swarm bounded.</small>
+      </section>
+
+      <section class="panel">
+        <h2>Tunables</h2>
+        <div class="row"><label>Noise</label><input type="range" id="noise" min="0.001" max="0.05" step="0.001" value="0.012"></div>
+        <div class="row"><label>Forgiveness</label><input type="range" id="forgiveness" min="0" max="0.4" step="0.01" value="0.18"></div>
+        <div class="row"><label>Auto-pulse period (s)</label><input type="range" id="pulse-period" min="2" max="20" step="1" value="8"></div>
+        <small>Forgiveness uses harmonic memory to damp spikes (kenotic safeguard).</small>
+      </section>
+    </aside>
+
+    <section style="position:relative;">
+      <canvas id="phasecube"></canvas>
+      <div class="metrics" id="metrics">
+        fps: 0<br>
+        variance: 0<br>
+        entropy: 0<br>
+        bias: 0<br>
+        lens: 0/0/0/0
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Emergent, bounded, configurable. Inspired by prior deltas (e.g., L7Q9XK) and staying influence-only.</p>
+  </footer>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
