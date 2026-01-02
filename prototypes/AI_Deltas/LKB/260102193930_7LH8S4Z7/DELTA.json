@@ -1,0 +1,114 @@
+{
+  "delta_id": "260102193930_7LH8S4Z7",
+  "created_utc": "2026-01-02T19:41:25Z",
+  "status": "ok",
+  "source_paths_analyzed": [
+    "docs/",
+    "prototypes/LKB_POCs/",
+    "prototypes/Toys/",
+    "prototypes/AI_Deltas/LKB/"
+  ],
+  "source_vectors": {
+    "SV1": {
+      "ref": "docs/Parallel-Paradox-Design.md",
+      "why_it_matters": "Canonical design map emphasizing decentralized, harmonic, anti-singularity behaviors.",
+      "extracted_constraints": [
+        "Keep decentralized flow without central controllers",
+        "Include harmonic/forgiveness guardrails to avoid runaway dynamics",
+        "Expose modular lens-inspired tuning"
+      ]
+    },
+    "SV2": {
+      "ref": "prototypes/LKB_POCs/readme.md",
+      "why_it_matters": "PhaseCube ethos: influence-not-command biasing, noise/decay to prevent collapse, and minimalism.",
+      "extracted_constraints": [
+        "Bias adjusts probabilities but never overwrites state",
+        "Maintain stochastic noise/decay to avoid lock-in",
+        "Keep implementation human-readable with minimal dependencies"
+      ]
+    },
+    "SV3": {
+      "ref": "prototypes/LKB_POCs/phasecube_dreaming_0001.html",
+      "why_it_matters": "Baseline HTML showing audio-driven bias fields with Path B and ALPHA tunables.",
+      "extracted_constraints": [
+        "Map inputs into decaying bias fields instead of direct control",
+        "Expose tunables for Path B probability and damping",
+        "Retain internal jitter to keep the system lively"
+      ]
+    },
+    "SV4": {
+      "ref": "prototypes/LKB_POCs/98E66S/js/main.js",
+      "why_it_matters": "Structured audio mapping and deterministic synth start for the lattice loop.",
+      "extracted_constraints": [
+        "Support influence pulses/mode switches without stale state",
+        "Permit reinitialization of grid/input cleanly",
+        "Use stereo/depth cues when converting inputs to bias"
+      ]
+    },
+    "SV5": {
+      "ref": "prototypes/LKB_POCs/98E66S/js/renderer.js",
+      "why_it_matters": "Separates rendering from simulation and filters out low-energy noise while parity shapes variation.",
+      "extracted_constraints": [
+        "Keep simulation logic separable from presentation/metrics",
+        "Ignore near-zero energy contributions to reduce clutter",
+        "Preserve parity noise to diversify outcomes"
+      ]
+    },
+    "SV6": {
+      "ref": "prototypes/Toys/lkb_agi_0001.html",
+      "why_it_matters": "Minimal PhaseCube rewrite confirming baseline tunables and UI-light approach.",
+      "extracted_constraints": [
+        "Retain core knobs (flip, parity, Path B, ALPHA)",
+        "Avoid heavy build steps or dependencies",
+        "Favor clear loops over abstraction-heavy patterns"
+      ]
+    },
+    "SV7": {
+      "ref": "prototypes/AI_Deltas/LKB/LKB20250329X7N4/README.md",
+      "why_it_matters": "Prior delta with lens-gated bias pulses and forgiveness in a dual-grid headless runner.",
+      "extracted_constraints": [
+        "Blend lens mixer outputs into Path B and damping",
+        "Use scenario-style bias pulses that decay",
+        "Provide CLI run path and accompanying tests"
+      ]
+    },
+    "SV8": {
+      "ref": "prototypes/AI_Deltas/LKB/LKB20250329X7N4/DELTA.json",
+      "why_it_matters": "Manifest reinforcing modular, influence-only biasing with kenotic safeguards.",
+      "extracted_constraints": [
+        "Keep bias influence-only and decaying",
+        "Include forgiveness guardrails for dispersion",
+        "Stay modular/config-driven"
+      ]
+    },
+    "SV9": {
+      "ref": "prototypes/LKB_POCs/V4H2J9/app.js",
+      "why_it_matters": "Dual-grid browser POC with delay line, plasticity, and gentle cross-talk.",
+      "extracted_constraints": [
+        "Consider dual-grid coupling with soft cross-talk",
+        "Allow delayed memory/echo influence",
+        "Expose tunables for noise and coupling"
+      ]
+    },
+    "SV10": {
+      "ref": "prototypes/LKB_POCs/V4H2J9/README.md",
+      "why_it_matters": "Companion README stressing interpretability overlays and minimal runnable setup.",
+      "extracted_constraints": [
+        "Surface metrics for interpretability",
+        "Stay dependency-light and easy to run",
+        "Document limitations/TODOs for scaling"
+      ]
+    }
+  },
+  "parent_delta_ids": [],
+  "summary": "Python headless dual-grid runner with decaying bias pulses, lens-inspired gating, forgiveness damping, and tests confined to this delta.",
+  "breaking_changes": false,
+  "assumptions": [
+    {
+      "label": "Python 3.11+ is available for running the headless simulation and tests",
+      "type": "Inference",
+      "rationale": "Repository language mix does not declare a Python toolchain; assuming modern interpreter is acceptable to stay dependency-light."
+    }
+  ],
+  "sensitive_files_skipped": []
+}
