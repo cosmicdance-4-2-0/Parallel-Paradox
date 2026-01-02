@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="PhaseCube harmonic upgrade – modular Lyriel/Kairi swarm (DeltaID: P7L9X3)." />
+  <title>PhaseCube Harmonic Upgrade (P7L9X3)</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050505;
+      --panel: rgba(12, 12, 16, 0.92);
+      --accent: #7fe07f;
+      --text: #e8f5e9;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; }
+    body { display: grid; grid-template-rows: auto 1fr auto; }
+    header, footer { padding: 0.75rem 1rem; text-align: center; background: rgba(0,0,0,0.35); backdrop-filter: blur(6px); }
+    main { position: relative; }
+    canvas { width: 100%; height: calc(100vh - 140px); display: block; }
+    .panel { position: absolute; top: 10px; left: 10px; padding: 12px; background: var(--panel); border-radius: 10px; border: 1px solid #1c1c26; box-shadow: 0 0 12px rgba(0,0,0,0.35); width: min(480px, 92vw); }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+    button, select, input[type=range] { background: #0f1510; color: var(--accent); border: 1px solid #283428; border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
+    button.primary { background: #153215; color: #c3f7c3; border-color: #2d6f2d; }
+    label { font-size: 13px; color: #cdddcf; }
+    small { color: #9fb19d; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PhaseCube — Harmonic Path Upgrade <small>(DeltaID: P7L9X3)</small></h1>
+  </header>
+  <main>
+    <canvas id="render"></canvas>
+    <div class="panel" id="ui">
+      <div class="row" aria-label="mode toggles">
+        <button id="liveBtn" class="primary">Start Live Audio</button>
+        <button id="pulseBtn">Synthetic Pulse</button>
+        <button id="idleBtn">Idle Dream</button>
+        <button id="pauseBtn">Pause</button>
+        <button id="saveBtn">Save PNG</button>
+      </div>
+      <div class="row" aria-label="lens weights">
+        <label for="lensPreset">Lens preset</label>
+        <select id="lensPreset">
+          <option value="balanced">Balanced</option>
+          <option value="human">Human</option>
+          <option value="predictive">Predictive</option>
+          <option value="systemic">Systemic</option>
+          <option value="harmonic">Harmonic</option>
+        </select>
+        <small>Maps four-lens idea to path weights.</small>
+      </div>
+      <div class="row" aria-label="tunables">
+        <label>Flip</label><input type="range" id="flip" min="0.001" max="0.05" step="0.001">
+        <label>Parity</label><input type="range" id="parity" min="0.001" max="0.03" step="0.001">
+        <label>Forgiveness</label><input type="range" id="forgive" min="0" max="1" step="0.05">
+        <label>Alpha</label><input type="range" id="alpha" min="0.05" max="0.35" step="0.01">
+      </div>
+      <div class="row" aria-label="status">
+        <small id="status">Idle.</small>
+      </div>
+    </div>
+  </main>
+  <footer>
+    <p>Minimal yet modular — ready for Lyriel/Kairi lens fusion. Drag to rotate; P to pause; S to save. TODO: Add GPU path + file audio.</p>
+  </footer>
+
+  <script type="module">
+    import { config, lensPresets, applyLensPreset } from './src/config.js';
+    import { createRenderer } from './src/core/render.js';
+    import { PhaseGrid } from './src/core/phaseGrid.js';
+    import { InputField } from './src/core/inputField.js';
+    import { createAudioDriver } from './src/core/audio.js';
+    import { createController } from './src/core/controller.js';
+
+    // Wiring orchestrator. Keeping glue code small makes future swaps easy.
+    const canvas = document.getElementById('render');
+    const renderer = createRenderer(canvas, config);
+    const grid = new PhaseGrid(config);
+    const inputField = new InputField(config);
+    const audio = createAudioDriver(config);
+    const controller = createController({ renderer, grid, inputField, audio, config });
+
+    // UI bindings
+    const status = document.getElementById('status');
+    const bindRange = (id, key) => {
+      const el = document.getElementById(id);
+      el.value = config[key];
+      el.addEventListener('input', () => {
+        config[key] = parseFloat(el.value);
+        status.textContent = `Set ${key} = ${config[key].toFixed(3)}`;
+      });
+    };
+    bindRange('flip', 'FLIP_P');
+    bindRange('parity', 'PARITY_P');
+    bindRange('forgive', 'FORGIVENESS');
+    bindRange('alpha', 'ALPHA');
+
+    document.getElementById('lensPreset').addEventListener('change', (e) => {
+      applyLensPreset(config, lensPresets[e.target.value]);
+      status.textContent = `Applied ${e.target.value} lens weights.`;
+    });
+
+    document.getElementById('pauseBtn').addEventListener('click', () => {
+      controller.togglePause();
+      status.textContent = controller.state.paused ? 'Paused.' : 'Running.';
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', () => renderer.savePNG('phasecube_harmonic.png'));
+
+    document.getElementById('liveBtn').addEventListener('click', async () => {
+      status.textContent = 'Requesting mic...';
+      await controller.switchDriver('live');
+      status.textContent = 'Live audio engaged.';
+    });
+
+    document.getElementById('pulseBtn').addEventListener('click', async () => {
+      await controller.switchDriver('pulse');
+      status.textContent = 'Synthetic pulse driver running.';
+    });
+
+    document.getElementById('idleBtn').addEventListener('click', async () => {
+      await controller.switchDriver('idle');
+      status.textContent = 'Idle dream mode (internal noise only).';
+    });
+
+    // Keyboard shortcuts for ergonomics
+    window.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'p') document.getElementById('pauseBtn').click();
+      if (e.key.toLowerCase() === 's') document.getElementById('saveBtn').click();
+    });
+
+    controller.start();
+  </script>
+</body>
+</html>
