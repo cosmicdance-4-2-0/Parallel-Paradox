@@ -1,0 +1,14 @@
+{
+  "name": "phasecube-delta-a9c3f7l2p5r8",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Lens-scheduled tri-grid PhaseCube scaffold with decaying bias memory and forgiveness damping.",
+  "scripts": {
+    "simulate": "node src/simulate.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
