@@ -1,0 +1,157 @@
+/*
+File: css/main.css
+Purpose: Global reset + layout shell + minimal UI styling + canvas/overlay surfaces.
+*/
+
+/* Universal box-model reset, for layout sanity and composability */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Root typography and color baseline, for global consistency */
+html, body {
+  height: 100%;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  line-height: 1.5;
+  background: #000;
+  color: #fff;
+}
+
+/* Optional: improve text rendering in many environments */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Main application shell: header / main / footer */
+#app {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+/* Header + footer: minimal spacing */
+header, footer {
+  padding: 0.6rem 0.8rem;
+  text-align: center;
+}
+
+/* Control bar styling (your “pristine minimal UI”) */
+#bar {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px);
+}
+
+/* Footer: subtle separator */
+footer {
+  border-top: 1px solid rgba(255,255,255,0.10);
+  opacity: 0.9;
+}
+
+/* Main content container: canvas owns the space */
+main {
+  /* IMPORTANT: for CSS grid, prevents overflow weirdness */
+  min-height: 0;
+
+  overflow: hidden;
+  position: relative;
+}
+
+/* Primary render target: canvas fills main */
+#render-target {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+
+  outline: none;
+  touch-action: none;
+}
+
+/* Overlay surface: default pass-through input */
+#dom-target {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Buttons/labels/pills share consistent styling */
+button,
+label,
+.pill {
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  border-radius: 10px;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+}
+
+/* Hover affordance */
+button:hover,
+label:hover {
+  background: rgba(255,255,255,0.12);
+}
+
+/* Disabled states */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Hide file input; label acts as the control */
+input[type="file"] {
+  display: none;
+}
+
+/* Status text: monospace, subtle */
+#status {
+  opacity: 0.9;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+}
+
+/* HUD/telemetry panel */
+#panel {
+  position: absolute;
+  right: 0.8rem;
+  top: 0.8rem;
+  max-width: min(420px, 92vw);
+
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  background: rgba(0,0,0,0.55);
+
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  white-space: pre-wrap;
+
+  /* IMPORTANT: read-only HUD; don’t steal pointer events */
+  pointer-events: none;
+}
+
+/* Noscript message */
+.noscript {
+  padding: 1rem;
+  text-align: center;
+}
+
+/* Optional: reduced-motion nicety */
+@media (prefers-reduced-motion: reduce) {
+  button:active { transform: none; }
+}
