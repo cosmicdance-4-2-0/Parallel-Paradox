@@ -1,0 +1,93 @@
+{
+  "delta_id": "LKBX24M9Q7P1",
+  "created_utc": "2026-01-02T18:31:49Z",
+  "source_paths_analyzed": [
+    "docs/",
+    "prototypes/LKB_POCs/"
+  ],
+  "source_vectors": [
+    {
+      "id": "SV1",
+      "path": "docs/Parallel-Paradox-Design.md",
+      "rationale": "Canonical design map for Lyriel/Kairi efforts and PhaseCube positioning.",
+      "constraints": [
+        "Keep systems decentralized, anti-singularity, and bounded with harmonic safeguards.",
+        "Honor the four-lens framing with harmonic fusion to avoid runaway behavior.",
+        "Treat PhaseCube as a decentralized dreaming substrate, not a goal-seeking AI."
+      ]
+    },
+    {
+      "id": "SV2",
+      "path": "prototypes/LKB_POCs/readme.md",
+      "rationale": "Base PhaseCube README defining the dreaming, non-collapsing swarm ethos.",
+      "constraints": [
+        "Bias must remain influence-only; never overwrite or command internal state.",
+        "Preserve non-collapse safeguards via noise, decay, and bounded memory.",
+        "Keep the implementation minimal, inspectable, and remixable."
+      ]
+    },
+    {
+      "id": "SV3",
+      "path": "prototypes/LKB_POCs/AI_Deltas/NCECI6/README.md",
+      "rationale": "LensBridge delta introducing tunable four-lens fusion, dual memory, and bias plumbing.",
+      "constraints": [
+        "Include harmonic lens blending with adjustable weights and profiles.",
+        "Route external bias through Systemic-like modulation so influence never becomes control.",
+        "Maintain dual memory tracks and forgiveness damping to stay bounded."
+      ]
+    },
+    {
+      "id": "SV4",
+      "path": "prototypes/LKB_POCs/K5N3Q8/README.md",
+      "rationale": "Pathfinder delta stressing modular ES modules, config-first tuning, and harmonic forgiveness.",
+      "constraints": [
+        "Centralize tunables in config and expose live controls for damping and bias weight.",
+        "Keep bias as influence-only and retain a trace buffer for short-term echoes.",
+        "Embed harmonic forgiveness when local variance spikes to prevent collapse."
+      ]
+    },
+    {
+      "id": "SV5",
+      "path": "prototypes/LKB_POCs/Q6P3R8/README.md",
+      "rationale": "Memory-Biased Swarm delta featuring tri-grid dialogue, delay-driven bias, and structural plasticity.",
+      "constraints": [
+        "Use tri-grid or multi-grid dialogue with soft cross-talk instead of central control.",
+        "Feed delayed energy back as bounded bias rather than hard state writes.",
+        "Include structural plasticity hooks and interpretability overlays/metrics."
+      ]
+    },
+    {
+      "id": "SV6",
+      "path": "prototypes/LKB_POCs/V4H2J9/README.md",
+      "rationale": "Dual swarm delta with delayed memory bias, structural plasticity, and interpretability focus.",
+      "constraints": [
+        "Support coupled grids exchanging gentle bias fields (no command pathways).",
+        "Implement bounded delay-line feedback adjustable via config/controls.",
+        "Surface metrics like energy/coherence to keep behavior legible."
+      ]
+    },
+    {
+      "id": "SV7",
+      "path": "prototypes/LKB_POCs/AI_Deltas/A6P9Q4/README.md",
+      "rationale": "Lens-guided tri-grid delta combining lenses, delayed bias, and plasticity with interpretability cues.",
+      "constraints": [
+        "Blend Human/Predictive/Systemic/Harmonic lenses into update weights with live tuning.",
+        "Retain shared delay lines and soft cross-grid nudges for layered emergence.",
+        "Leave TODO breadcrumbs for audio input and WebGL scale-ups."
+      ]
+    },
+    {
+      "id": "SV8",
+      "path": "prototypes/LKB_POCs/98E66S/README.md",
+      "rationale": "Modular PhaseCube delta adding forgiveness damping, tunable path blending, and configurable bias field.",
+      "constraints": [
+        "Expose path blending and forgiveness as tunable safeguards.",
+        "Keep bias configuration (radius/decay/strength) central and adjustable.",
+        "Maintain modular layout with clear upgrade hooks for multi-grid and lens fusion."
+      ]
+    }
+  ],
+  "parent_delta_ids": [],
+  "summary": "Implements a lens-aware, multi-grid PhaseCube iteration with delay-biased coupling, harmonic safeguards, and modular controls while staying influence-first and interpretable.",
+  "breaking_changes": false
+}

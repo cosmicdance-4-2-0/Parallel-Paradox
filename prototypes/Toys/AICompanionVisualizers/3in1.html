@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="description" content="Stereo audio-reactive generative art visualizer (mic or audio file)" />
+  <meta name="keywords" content="audio visualizer, generative art, web audio, canvas" />
+  <meta name="author" content="Christopher 'Kisuul' Lohman" />
+  <title>Stereo Audio-Reactive Visualizer</title>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: system-ui, sans-serif; background: #000; color: #fff; }
+    #app { display: grid; grid-template-rows: auto 1fr auto; height: 100%; }
+    header, footer { padding: 1rem; text-align: center; }
+    main { overflow: hidden; position: relative; }
+    #render-target { width: 100%; height: 100%; display: block; }
+
+    /* Overlay */
+    #dom-target {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      background: radial-gradient(circle at center, rgba(0,0,0,0.55), rgba(0,0,0,0.85));
+      padding: 2rem;
+      transition: opacity 0.35s ease;
+      pointer-events: auto;
+    }
+    #panel {
+      max-width: 720px;
+      width: min(720px, 92vw);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 1.25rem;
+      background: rgba(0,0,0,0.55);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    #panel h2 { font-size: 1.25rem; margin-bottom: 0.6rem; }
+    #panel p { line-height: 1.35; opacity: 0.95; }
+    #panel .small { opacity: 0.8; font-size: 0.92rem; margin-top: 0.6rem; }
+    #row { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-top: 0.9rem; }
+    button, .filelike {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 10px;
+      padding: 0.65rem 0.85rem;
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+    button:hover, .filelike:hover { background: rgba(255,255,255,0.10); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    input[type="file"] { display: none; }
+
+    #status {
+      margin-top: 0.8rem;
+      padding: 0.75rem;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.35);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.92rem;
+      white-space: pre-wrap;
+    }
+
+    /* Optional audio element (for file mode) */
+    #player {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 1rem;
+      width: min(720px, 92vw);
+      opacity: 0.9;
+      display: none;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Stereo Audio Reactive Visualizer</h1>
+    </header>
+
+    <main>
+      <canvas id="render-target"></canvas>
+
+      <div id="dom-target">
+        <div id="panel">
+          <h2>Enable Audio Reactivity</h2>
+          <p>
+            Microphone mode <b>cannot</b> work on <code>file://</code> due to browser security rules.
+            Audio File mode <b>does</b> work offline and stays single-file portable.
+          </p>
+
+          <div id="row">
+            <button id="btn-mic">Enable Microphone</button>
+
+            <label class="filelike" for="file-input">Use Audio File</label>
+            <input id="file-input" type="file" accept="audio/*" />
+
+            <button id="btn-hide">Hide Overlay</button>
+          </div>
+
+          <div class="small">
+            Headphones recommended. On desktop: serving from <b>http://localhost</b> counts as “secure enough” for mic.
+          </div>
+
+          <div id="status">Status: idle (rendering demo mode)</div>
+        </div>
+      </div>
+
+      <audio id="player" controls></audio>
+    </main>
+
+    <footer>
+      <p>© Christopher "Kisuul" Lohman — Stereo Visualizer v1.1</p>
+    </footer>
+  </div>
+
+  <script type="module">
+  (() => {
+    // ===== Math aliases (you used these but never defined them in v1.0) =====
+    const S = Math.sin;
+    const C = Math.cos;
+
+    // ===== Canvas =====
+    const canvas = document.getElementById('render-target');
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    // ===== UI =====
+    const overlay = document.getElementById('dom-target');
+    const statusEl = document.getElementById('status');
+    const btnMic = document.getElementById('btn-mic');
+    const btnHide = document.getElementById('btn-hide');
+    const fileInput = document.getElementById('file-input');
+    const player = document.getElementById('player');
+
+    function setStatus(msg) {
+      statusEl.textContent = `Status: ${msg}`;
+    }
+
+    btnHide.addEventListener('click', () => {
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.style.display = 'none', 350);
+    });
+
+    // ===== HiDPI resize =====
+    let vw = 0, vh = 0, dpr = 1;
+
+    function resize() {
+      dpr = Math.max(1, window.devicePixelRatio || 1);
+      vw = window.innerWidth;
+      vh = window.innerHeight;
+
+      canvas.style.width = vw + 'px';
+      canvas.style.height = vh + 'px';
+
+      canvas.width = Math.floor(vw * dpr);
+      canvas.height = Math.floor(vh * dpr);
+
+      // Draw in CSS pixels
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize, { passive: true });
+    resize();
+
+    // ===== Audio state =====
+    const state = {
+      audioCtx: null,
+      started: false,
+      mode: 'idle', // idle | mic | file
+      // analysers
+      masterAnalyser: null,
+      leftAnalyser: null,
+      rightAnalyser: null,
+      masterData: null,
+      leftData: null,
+      rightData: null,
+      // smoothing / bpm
+      time: 0,
+      leftEnergy: 0,
+      rightEnergy: 0,
+      centerEnergy: 0,
+      energyHistory: [],
+      lastPeakTime: 0,
+      bpm: 120,
+    };
+
+    // ===== Utilities =====
+    function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+
+    function average(arr, start, count) {
+      // Safe bounds
+      const end = Math.min(arr.length, start + count);
+      let sum = 0;
+      for (let i = start; i < end; i++) sum += arr[i];
+      const n = Math.max(1, end - start);
+      return sum / (n * 255);
+    }
+
+    function ensureAudioContext() {
+      if (state.audioCtx) return state.audioCtx;
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) throw new Error('Web Audio not supported in this browser.');
+      state.audioCtx = new Ctx();
+      // Some browsers need resume() after gesture
+      state.audioCtx.resume?.();
+      return state.audioCtx;
+    }
+
+    function buildAnalyserGraph(sourceNode, audioCtx, { connectToDestination }) {
+      // Master analyser
+      const masterAnalyser = audioCtx.createAnalyser();
+      masterAnalyser.fftSize = 512;
+      const masterData = new Uint8Array(masterAnalyser.frequencyBinCount);
+
+      // Stereo split analysers
+      const splitter = audioCtx.createChannelSplitter(2);
+      const leftAnalyser = audioCtx.createAnalyser();
+      const rightAnalyser = audioCtx.createAnalyser();
+      leftAnalyser.fftSize = rightAnalyser.fftSize = 256;
+      const leftData = new Uint8Array(leftAnalyser.frequencyBinCount);
+      const rightData = new Uint8Array(rightAnalyser.frequencyBinCount);
+
+      // Wiring
+      sourceNode.connect(masterAnalyser);
+      sourceNode.connect(splitter);
+      splitter.connect(leftAnalyser, 0);
+      splitter.connect(rightAnalyser, 1);
+
+      // Optional playback
+      if (connectToDestination) {
+        const gain = audioCtx.createGain();
+        gain.gain.value = 0.9;
+        sourceNode.connect(gain);
+        gain.connect(audioCtx.destination);
+      }
+
+      state.masterAnalyser = masterAnalyser;
+      state.leftAnalyser = leftAnalyser;
+      state.rightAnalyser = rightAnalyser;
+      state.masterData = masterData;
+      state.leftData = leftData;
+      state.rightData = rightData;
+
+      // Reset trackers a bit
+      state.energyHistory.length = 0;
+      state.lastPeakTime = 0;
+      state.bpm = 120;
+      state.leftEnergy = state.rightEnergy = state.centerEnergy = 0;
+    }
+
+    // ===== Mic mode (requires secure context) =====
+    let initGuard = false;
+
+    async function startMic() {
+      if (initGuard) return;
+      initGuard = true;
+
+      try {
+        // This is the real reason file:// fails.
+        if (!window.isSecureContext) {
+          throw new Error(
+            'Microphone requires a secure origin.\n' +
+            'Use https OR run locally and open http://localhost/... \n' +
+            '(file:// will never prompt for mic).'
+          );
+        }
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error('getUserMedia() is not available in this browser/context.');
+        }
+
+        setStatus('requesting microphone permission…');
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        const audioCtx = ensureAudioContext();
+        const source = audioCtx.createMediaStreamSource(stream);
+
+        buildAnalyserGraph(source, audioCtx, { connectToDestination: false });
+
+        state.started = true;
+        state.mode = 'mic';
+        setStatus('microphone active ✅ (rendering stereo analysis)');
+        fadeOverlaySoon();
+      } catch (err) {
+        initGuard = false;
+        setStatus('mic failed ❌\n' + (err?.message || String(err)));
+      }
+    }
+
+    btnMic.addEventListener('click', startMic);
+
+    function fadeOverlaySoon() {
+      // Don’t remove instantly; let status remain readable if needed.
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.style.display = 'none', 420);
+    }
+
+    // ===== File mode (portable on file://) =====
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      try {
+        const audioCtx = ensureAudioContext();
+
+        // Use <audio> element for simple decoding/controls.
+        const url = URL.createObjectURL(file);
+        player.src = url;
+        player.style.display = 'block';
+
+        // Must be created once per audio element per context
+        // (re-selecting a new file: rebuild source graph)
+        // Disconnect old graph by nuking analysers refs; browser GC handles the nodes once orphaned.
+        state.masterAnalyser = state.leftAnalyser = state.rightAnalyser = null;
+
+        const source = audioCtx.createMediaElementSource(player);
+        buildAnalyserGraph(source, audioCtx, { connectToDestination: true });
+
+        await player.play();
+
+        state.started = true;
+        state.mode = 'file';
+        setStatus(`file active ✅ (${file.name}) (rendering stereo analysis)`);
+        fadeOverlaySoon();
+      } catch (err) {
+        setStatus('file mode failed ❌\n' + (err?.message || String(err)));
+      } finally {
+        // allow selecting the same file again later
+        fileInput.value = '';
+      }
+    });
+
+    // ===== Rendering =====
+    let lastT = performance.now();
+    let backgroundDrawn = false;
+
+    function tick(now) {
+      const dt = Math.min(0.05, (now - lastT) / 1000); // clamp dt to avoid huge jumps
+      lastT = now;
+
+      // time moves even in idle mode so you still see motion
+      state.time += dt;
+
+      // === Background / trails ===
+      if (!backgroundDrawn) {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, vw, vh);
+        backgroundDrawn = true;
+      }
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = 'rgba(0,0,0,0.08)';
+      ctx.fillRect(0, 0, vw, vh);
+      ctx.globalCompositeOperation = 'lighter';
+
+      // === Audio sampling (if active) ===
+      let fullBass = 0;
+      let leftBass = 0;
+      let rightBass = 0;
+
+      if (state.masterAnalyser && state.leftAnalyser && state.rightAnalyser) {
+        state.masterAnalyser.getByteFrequencyData(state.masterData);
+        state.leftAnalyser.getByteFrequencyData(state.leftData);
+        state.rightAnalyser.getByteFrequencyData(state.rightData);
+
+        fullBass = average(state.masterData, 0, 40);
+        leftBass = average(state.leftData, 0, 30);
+        rightBass = average(state.rightData, 0, 30);
+      } else {
+        // Idle “ghost” bass so you still get a living demo while offline/no audio
+        const t = state.time;
+        fullBass = 0.12 + 0.08 * S(t * 0.9) + 0.04 * S(t * 2.2);
+        leftBass = 0.10 + 0.06 * S(t * 1.1 + 1.3);
+        rightBass = 0.10 + 0.06 * S(t * 1.05 - 0.7);
+        fullBass = clamp(fullBass, 0, 1);
+        leftBass = clamp(leftBass, 0, 1);
+        rightBass = clamp(rightBass, 0, 1);
+      }
+
+      const monoBass = (leftBass + rightBass) / 2;
+
+      // Smoothing (slightly dt-aware)
+      const smooth = 0.88; // closer to 1 = smoother
+      state.leftEnergy   = state.leftEnergy   * smooth + leftBass  * (1 - smooth);
+      state.rightEnergy  = state.rightEnergy  * smooth + rightBass * (1 - smooth);
+      state.centerEnergy = state.centerEnergy * smooth + monoBass  * (1 - smooth);
+
+      // BPM-ish detection (only meaningful when real audio is present)
+      if (state.mode !== 'idle') {
+        state.energyHistory.push(monoBass);
+        if (state.energyHistory.length > 180) state.energyHistory.shift();
+
+        const avgEnergy = state.energyHistory.reduce((a, b) => a + b, 0) / state.energyHistory.length;
+        const refractoryMs = 280;
+        if (monoBass > avgEnergy * 1.4 && (now - state.lastPeakTime) > refractoryMs) {
+          const interval = now - state.lastPeakTime;
+          state.lastPeakTime = now;
+
+          if (interval > 0) {
+            const detected = 60000 / interval;
+            // constrain to sane range; mic noise can spike weirdly
+            const detectedClamped = clamp(detected, 60, 200);
+            state.bpm = state.bpm * 0.9 + detectedClamped * 0.1;
+          }
+        }
+      } else {
+        // Idle “bpm” oscillation
+        state.bpm = 120 + 25 * S(state.time * 0.35);
+      }
+
+      const particleCount = clamp(Math.round(state.bpm / 3), 12, 48);
+
+      // === Orb macro motion ===
+      const cx = vw / 2;
+      const cy = vh / 2;
+
+      const baseOrbit = 180;
+      const dynamic = fullBass * 220;
+      const orbitRadius = baseOrbit + dynamic;
+
+      const orbitPhase = state.time * 0.35;
+
+      // left orb
+      drawOrb(
+        cx + C(orbitPhase) * orbitRadius,
+        cy + S(orbitPhase * 1.12) * orbitRadius * 0.6,
+        state.leftEnergy,
+        particleCount,
+        0
+      );
+
+      // right orb (opposed)
+      drawOrb(
+        cx + C(orbitPhase + Math.PI) * orbitRadius,
+        cy + S(orbitPhase * 1.12 + Math.PI) * orbitRadius * 0.6,
+        state.rightEnergy,
+        particleCount,
+        120
+      );
+
+      // center orb
+      drawOrb(
+        cx + S(orbitPhase * 0.75) * orbitRadius * 0.42,
+        cy + C(orbitPhase * 0.75) * orbitRadius * 0.30,
+        state.centerEnergy * 1.25,
+        particleCount + 8,
+        240
+      );
+
+      requestAnimationFrame(tick);
+    }
+
+    function drawOrb(centerX, centerY, energy, count, hueOffset) {
+      const baseScale = 420;
+      const scale = baseScale + energy * 200;
+
+      for (let k = 0; k < count; k++) {
+        const angle = k * Math.PI * 2 / count;
+
+        // A little “spiral chaos” tied to energy and time
+        const spiral = S(state.time * (0.75 + energy * 3.0) + k * 0.6 + hueOffset / 100) * (2.0 + energy * 2.2);
+
+        const a = state.time * (1.10 + energy) + angle + spiral;
+        const b = S(a * 0.35 + angle) * (1.3 + energy * 0.8);
+
+        // pseudo-3D param mapping
+        const X = C(b) * C(a);
+        const Y = S(b);
+        const Z = C(b) * S(a) + 0.2;
+
+        const depth = Z * 0.8 + 1.8;
+        const size = (10 + energy * 30) / depth;
+
+        const hue = (k * (360 / count) + state.time * 12 + hueOffset) % 360;
+
+        ctx.fillStyle = `hsla(${hue},100%,65%,0.92)`;
+        ctx.fillRect(
+          centerX + X * scale / depth - size / 2,
+          centerY + Y * scale / depth - size / 2,
+          size,
+          size
+        );
+      }
+    }
+
+    // Start rendering immediately (idle demo)
+    setStatus('idle (rendering demo mode). Choose Microphone or Audio File.');
+    requestAnimationFrame(tick);
+  })();
+  </script>
+</body>
+</html>

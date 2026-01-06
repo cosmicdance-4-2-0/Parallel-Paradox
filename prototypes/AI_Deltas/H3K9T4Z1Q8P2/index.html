@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhaseCube — Delta H3K9T4Z1Q8P2</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; background: #020202; color: #e6ffe6; font-family: "Inter", system-ui, sans-serif; }
+    body { display: grid; grid-template-rows: auto 1fr auto; }
+    header, footer { padding: 10px 14px; background: rgba(0,0,0,0.65); border-bottom: 1px solid #0f2213; }
+    footer { border-top: 1px solid #0f2213; border-bottom: none; font-size: 12px; color: #9ad9a7; }
+    main { position: relative; overflow: hidden; }
+    canvas { width: 100%; height: 100%; display: block; }
+    #overlay {
+      position: absolute; top: 12px; left: 12px; min-width: 220px;
+      background: rgba(5,12,6,0.82); border: 1px solid #214c28;
+      border-radius: 8px; padding: 10px; font-family: "IBM Plex Mono", monospace;
+      font-size: 12px; line-height: 1.4; pointer-events: auto;
+    }
+    #controls { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .row { display: grid; grid-template-columns: 1fr 120px; gap: 8px; align-items: center; }
+    label { color: #bdf0c7; font-size: 12px; }
+    input[type="range"] { width: 100%; accent-color: #6ee28a; }
+    button { background: #0b1a0f; color: #9af2b2; border: 1px solid #214c28; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+    button:hover { border-color: #3df59c; }
+    .hint { color: #7ab28b; font-size: 11px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>PhaseCube — Harmonic Lens + Kenotic Bias</strong>
+    <span style="color:#7ab28b;">(DeltaID: H3K9T4Z1Q8P2)</span>
+  </header>
+  <main>
+    <canvas id="view"></canvas>
+    <div id="overlay">
+      <div id="metrics">Booting…</div>
+      <div id="controls"></div>
+      <div class="hint">Space: pause · S: snapshot · Drag: rotate<br>Influence-only; memory is bias, not overwrite.</div>
+    </div>
+  </main>
+  <footer>
+    Influence is allowed; control is not. Memory stays soft. DeltaID H3K9T4Z1Q8P2.
+  </footer>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

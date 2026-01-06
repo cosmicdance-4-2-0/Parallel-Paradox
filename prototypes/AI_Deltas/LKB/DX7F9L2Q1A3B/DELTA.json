@@ -1,0 +1,93 @@
+{
+  "delta_id": "DX7F9L2Q1A3B",
+  "created_utc": "2026-01-02T18:58:12Z",
+  "source_paths_analyzed": [
+    "docs/",
+    "prototypes/LKB_POCs/"
+  ],
+  "source_vectors": [
+    {
+      "id": "SV1",
+      "path": "docs/Parallel-Paradox-Design.md",
+      "why": "Canonical design map and anti-singularity stance that frames lens fusion and decentralization.",
+      "constraints": [
+        "Keep systems bounded and decentralized.",
+        "Harmonic lens balances other signals to avoid runaway behavior.",
+        "Maintain modular, human-readable architecture."
+      ]
+    },
+    {
+      "id": "SV2",
+      "path": "prototypes/LKB_POCs/readme.md",
+      "why": "Baseline PhaseCube description detailing influence-only inputs and non-collapse goals.",
+      "constraints": [
+        "Inputs bias probabilities but never overwrite state.",
+        "Preserve non-collapsing, bounded dynamics.",
+        "Stay dependency-light and inspectable."
+      ]
+    },
+    {
+      "id": "SV3",
+      "path": "prototypes/Readme.md",
+      "why": "System architecture and tunables for PhaseCube, including toroidal lattice and path-B weighting.",
+      "constraints": [
+        "Expose tunables for noise, path-B bias, and damping.",
+        "Maintain toroidal neighbor topology.",
+        "Keep rendering lightweight and modular."
+      ]
+    },
+    {
+      "id": "SV4",
+      "path": "prototypes/LKB_POCs/phasecube_dreaming_0001.html",
+      "why": "Audio bias mapping (freq→depth, pan→x) and overlay cues for transparency.",
+      "constraints": [
+        "Decay audio-derived bias over time.",
+        "Map spectral energy spatially across the grid.",
+        "Keep overlays lightweight and informative."
+      ]
+    },
+    {
+      "id": "SV5",
+      "path": "prototypes/LKB_POCs/AI_Deltas/A6P9Q4/README.md",
+      "why": "Lens-guided tri-grid dialogue blueprint with delay and cross-biasing.",
+      "constraints": [
+        "Support multi-grid interaction without central control.",
+        "Allow lens weights to modulate mixing and damping.",
+        "Surface metrics for interpretability."
+      ]
+    },
+    {
+      "id": "SV6",
+      "path": "prototypes/LKB_POCs/Q6P3R8/README.md",
+      "why": "Memory-biased feedback and plasticity hooks for delayed influence.",
+      "constraints": [
+        "Keep bias reinjection soft and bounded.",
+        "Document TODOs for scaling and storage.",
+        "Retain modular, human-readable modules."
+      ]
+    },
+    {
+      "id": "SV7",
+      "path": "prototypes/LKB_POCs/V4H2J9/README.md",
+      "why": "Dual-grid with delayed bias and damping safeguards plus interpretability expectations.",
+      "constraints": [
+        "Preserve cross-grid dialogue knobs (noise, cross-talk, plasticity).",
+        "Maintain damping safeguards against collapse.",
+        "Flag scale-up opportunities as TODOs."
+      ]
+    },
+    {
+      "id": "SV8",
+      "path": "prototypes/LKB_POCs/AI_Deltas/J8L2Q9/README.md",
+      "why": "Harmonic stabilizer grid with audio bias and lens mixing guidance.",
+      "constraints": [
+        "Include harmonic damping layer tied to lens signals.",
+        "Allow audio-like bias injection with graceful fallback.",
+        "Expose metrics for transparent tuning."
+      ]
+    }
+  ],
+  "parent_delta_ids": [],
+  "summary": "Adds a lens-guided tri-grid swarm with decaying spectral bias, harmonic damping, and canvas overlay scoped to DX7F9L2Q1A3B.",
+  "breaking_changes": false
+}

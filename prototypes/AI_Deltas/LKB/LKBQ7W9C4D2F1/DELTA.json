@@ -1,0 +1,95 @@
+{
+  "delta_id": "LKBQ7W9C4D2F1",
+  "created_utc": "2026-01-02T18:45:51Z",
+  "source_paths_analyzed": [
+    "docs/",
+    "prototypes/LKB_POCs/"
+  ],
+  "parent_delta_ids": [
+    "LKB7X9G2"
+  ],
+  "source_vectors": [
+    {
+      "id": "SV1",
+      "path": "docs/Parallel-Paradox-Design.md",
+      "why": "Canonical design map aligning agents, consensus motifs, and safety constraints.",
+      "constraints": [
+        "Maintain decentralized, non-singular behaviors with harmonic stabilization.",
+        "Map four-lens architecture into data flow with harmonic fusion as guardrail.",
+        "Keep systems bounded and non-collapsing while allowing emergence."
+      ]
+    },
+    {
+      "id": "SV2",
+      "path": "prototypes/LKB_POCs/readme.md",
+      "why": "Root POC description emphasizing dreaming brain ethos and influence-not-command inputs.",
+      "constraints": [
+        "Preserve autonomy: inputs bias probabilities without overwriting state.",
+        "Avoid goal-driven or collapse-prone dynamics; keep non-collapsing, stochastic behavior.",
+        "Remain minimal, dependency-light, and inspectable."
+      ]
+    },
+    {
+      "id": "SV3",
+      "path": "Minimalaiagi.md",
+      "why": "Defines four-lens modular architecture and harmonic weighting strategy.",
+      "constraints": [
+        "Expose human, predictive, systemic, and harmonic lenses as modular components.",
+        "Fuse decisions via harmonic weighting to prevent runaway outcomes.",
+        "Keep design extensible for additional lenses without disrupting core."
+      ]
+    },
+    {
+      "id": "SV4",
+      "path": "Minimalnode...wait...minimal.md",
+      "why": "Swarm consensus framing and noise/entropy controls for Lyriel behavior.",
+      "constraints": [
+        "Use stochasticity and noise as safety/consensus drivers rather than central control.",
+        "Favor distributed influence and oracle-like weighting without single points of failure.",
+        "Support witness-like propagation/persistence metaphors across the grid."
+      ]
+    },
+    {
+      "id": "SV5",
+      "path": "Computation.md",
+      "why": "Forgiveness operator concept for damping dispersion when thresholds are exceeded.",
+      "constraints": [
+        "Modulate coupling strength based on dispersion to avoid collapse or divergence.",
+        "Track forgiveness events as part of stability introspection.",
+        "Keep implementation modular for alternate force kernels or lifts."
+      ]
+    },
+    {
+      "id": "SV6",
+      "path": "prototypes/Readme.md",
+      "why": "PhaseCube architecture and tunables baseline for grid dynamics and parameterization.",
+      "constraints": [
+        "Retain tunable parameters (flip/parity/path bias/alpha) to explore stability vs. variability.",
+        "Maintain toroidal neighbor interactions and phase blending for robustness.",
+        "Provide high-level configuration surface for experimentation."
+      ]
+    },
+    {
+      "id": "SV7",
+      "path": "prototypes/AI_Deltas/LKB/LKB7X9G2/readme.md",
+      "why": "Most recent delta wiring lenses into biasable dreamer with modular files and input bridge.",
+      "constraints": [
+        "Keep lens weights live-tunable and balanced via harmonic logic.",
+        "Bias bridges must diffuse/decay; inputs influence without permanent memory.",
+        "Structure code into readable modules with TODO hooks for future expansion."
+      ]
+    },
+    {
+      "id": "SV8",
+      "path": "prototypes/AI_Deltas/LKB/D7X2LQ8/README.md",
+      "why": "Earlier delta adding harmonic memory buffer and forgiveness dampener with bias pulses.",
+      "constraints": [
+        "Include harmonic memory/forgiveness to damp variance spikes.",
+        "Expose sliders/controls for noise and bias pulses (or equivalent tunables).",
+        "Maintain single-HTML/ESM readability and avoid heavy dependencies."
+      ]
+    }
+  ],
+  "summary": "Implements a modular, tunable headless PhaseCube-inspired core with lens-aware biasing, forgiveness damping, and tests to extend the LKB line beyond UI-focused deltas.",
+  "breaking_changes": false
+}

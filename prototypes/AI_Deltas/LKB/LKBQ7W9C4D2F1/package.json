@@ -1,0 +1,14 @@
+{
+  "name": "phasecube-lkbq7w9c4d2f1",
+  "version": "0.1.0",
+  "description": "Headless, lens-governed PhaseCube core with bias diffusion and forgiveness damping for the Lyriel Kairi Brain line.",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "vitest": "^1.6.0"
+  }
+}

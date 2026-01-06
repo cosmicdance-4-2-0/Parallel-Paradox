@@ -1,0 +1,119 @@
+{
+  "delta_id": "260102193935_88YZJWBB",
+  "created_utc": "2026-01-02T19:41:47Z",
+  "status": "ok",
+  "source_paths_analyzed": [
+    "docs/",
+    "prototypes/LKB_POCs/",
+    "prototypes/Toys/",
+    "prototypes/AI_Deltas/LKB/"
+  ],
+  "source_vectors": {
+    "SV1": {
+      "ref": "docs/Parallel-Paradox-Design.md",
+      "why_it_matters": "Sets anti-singularity stance and lens-based modularity expectations.",
+      "extracted_constraints": [
+        "Keep systems decentralized and modular with harmonic balancing.",
+        "Preserve four-lens framing when blending decisions.",
+        "Avoid monolithic control paths; favor tunable components."
+      ]
+    },
+    "SV2": {
+      "ref": "prototypes/LKB_POCs/readme.md",
+      "why_it_matters": "Defines PhaseCube ethos: influence-not-command, non-collapse via noise/decay, minimalism.",
+      "extracted_constraints": [
+        "Bias must influence but never overwrite core state.",
+        "Maintain stochastic guards and decay to prevent convergence.",
+        "Prefer dependency-light, readable implementations."
+      ]
+    },
+    "SV3": {
+      "ref": "prototypes/LKB_POCs/phasecube_dreaming_0001.html",
+      "why_it_matters": "Shows audio→bias mapping and tunable path probabilities for dreaming swarm.",
+      "extracted_constraints": [
+        "Map spectral/positional inputs into soft bias fields.",
+        "Expose tunables like BASE_PATH_B_P and ALPHA for experimentation.",
+        "Keep rendering/UI optional; core sim should run headless."
+      ]
+    },
+    "SV4": {
+      "ref": "prototypes/LKB_POCs/98E66S/js/main.js",
+      "why_it_matters": "Demonstrates lattice stepping tied to audio-derived input field with deterministic start mode.",
+      "extracted_constraints": [
+        "Support repeatable runs via deterministic seeding or default input mode.",
+        "Couple bias ingestion to grid steps while keeping pause/reset hooks.",
+        "Skip unnecessary cycles to avoid busy loops when idle." 
+      ]
+    },
+    "SV5": {
+      "ref": "prototypes/LKB_POCs/98E66S/js/phaseGrid.js",
+      "why_it_matters": "Implements path-A vs path-B blending, parity jitter, and forgiveness damping.",
+      "extracted_constraints": [
+        "Blend neighbor averages with directional deltas to keep exploration alive.",
+        "Inject parity-driven asymmetry and occasional flips.",
+        "Apply forgiveness factors when local energy spikes." 
+      ]
+    },
+    "SV6": {
+      "ref": "prototypes/LKB_POCs/98E66S/js/config.js",
+      "why_it_matters": "Captures tunable defaults for grid size, damping, path-B weight, and forgiveness.",
+      "extracted_constraints": [
+        "Expose grid size, pathB weight, alpha, and forgiveness as configurable knobs.",
+        "Keep numeric ranges bounded to avoid runaway values.",
+        "Record DeltaID/version alongside config." 
+      ]
+    },
+    "SV7": {
+      "ref": "prototypes/AI_Deltas/LKB/LKB20250329X7N4/README.md",
+      "why_it_matters": "Headless dual-grid scenario runner with lens mixer and forgiveness guardrails.",
+      "extracted_constraints": [
+        "Structure code as headless runner with scenario-driven bias pulses.",
+        "Keep lens gating and echo/forgiveness hooks explicit and tunable.",
+        "Provide CLI-friendly run/test instructions." 
+      ]
+    },
+    "SV8": {
+      "ref": "prototypes/AI_Deltas/LKB/LKB20250329X7N4/src/grid.js",
+      "why_it_matters": "Details bias/echo blending, pathB probability, and forgiveness thresholding in lattice updates.",
+      "extracted_constraints": [
+        "Clamp effective plasma with bias/echo gains before neighbor averaging.",
+        "Use pathB probability to choose between diff-driven and avg blending.",
+        "Apply forgiveness when dispersion exceeds thresholds to damp extremes." 
+      ]
+    },
+    "SV9": {
+      "ref": "prototypes/AI_Deltas/LKB/LKB20250326X7A9/README.md",
+      "why_it_matters": "Python headless audio-bias lens mixer with kenotic forgiveness and decay fields.",
+      "extracted_constraints": [
+        "Bias fields should decay and use radial falloff from stereo-like inputs.",
+        "Lens mixer outputs pathB probability, damping, and bias gain.",
+        "CLI runs and tests must remain dependency-light." 
+      ]
+    },
+    "SV10": {
+      "ref": "prototypes/AI_Deltas/LKB/LKB20250326X7A9/src/lkb_delta/simulation.py",
+      "why_it_matters": "Run loop wiring bias decay, lens mixing, forgiveness checks, and record-keeping.",
+      "extracted_constraints": [
+        "Session loops should be deterministic via seedable RNG.",
+        "Bias application occurs before grid step with lens-scaled gains.",
+        "Return structured step records capturing key metrics." 
+      ]
+    }
+  },
+  "parent_delta_ids": [],
+  "summary": "Headless Python delta introducing a deterministic bias-pulse runner with lens gating, forgiveness damping, and tunable config seeded from PhaseCube references.",
+  "breaking_changes": false,
+  "assumptions": [
+    {
+      "label": "Using Python for the new headless runner aligns with prior headless deltas despite some JS sources.",
+      "type": "Inference",
+      "rationale": "SV7 and SV9 show headless CLIs; adopting Python keeps parity with those patterns."
+    },
+    {
+      "label": "Audio-like inputs can be emulated via seeded random bins for deterministic tests.",
+      "type": "Inference",
+      "rationale": "SV9 and SV10 use RNG-driven bins when real audio is out-of-scope." 
+    }
+  ],
+  "sensitive_files_skipped": []
+}

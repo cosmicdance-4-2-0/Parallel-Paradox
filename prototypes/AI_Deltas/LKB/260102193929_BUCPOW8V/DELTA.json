@@ -1,0 +1,119 @@
+{
+  "delta_id": "260102193929_BUCPOW8V",
+  "created_utc": "2026-01-02T19:40:58Z",
+  "status": "ok",
+  "source_paths_analyzed": [
+    "docs/",
+    "prototypes/LKB_POCs/",
+    "prototypes/Toys/",
+    "prototypes/AI_Deltas/LKB/"
+  ],
+  "source_vectors": {
+    "SV1": {
+      "ref": "docs/Parallel-Paradox-Design.md",
+      "why_it_matters": "Canon for anti-singularity design, harmonic safety, and lens-led architecture.",
+      "extracted_constraints": [
+        "Favor harmonic damping and decentralization to avoid runaway behaviors.",
+        "Model four-lens fusion as modular, tunable layers.",
+        "Keep the system small-scale, inspectable, and non-monolithic."
+      ]
+    },
+    "SV2": {
+      "ref": "prototypes/LKB_POCs/readme.md",
+      "why_it_matters": "Defines PhaseCube ethos: minimal, bounded, influence-not-command biasing.",
+      "extracted_constraints": [
+        "Bias should influence but never overwrite lattice state.",
+        "Keep the prototype dependency-light and hackable.",
+        "Preserve plasma/liquid/solid phases with stochastic guards against collapse."
+      ]
+    },
+    "SV3": {
+      "ref": "prototypes/LKB_POCs/phasecube_dreaming_0001.html",
+      "why_it_matters": "Shows audio-to-depth/pan mapping, tunable controls, and visibility boosts for the lattice.",
+      "extracted_constraints": [
+        "Map low frequency to depth and stereo pan to lateral bias injection.",
+        "Expose tunables like BASE_PATH_B_P, input strength/decay, and visibility thresholds.",
+        "Seed activity and analyzer-style feedback to keep the swarm visibly alive."
+      ]
+    },
+    "SV4": {
+      "ref": "prototypes/LKB_POCs/98E66S/js/main.js",
+      "why_it_matters": "Provides deterministic startup, audio-driven biasing, and HUD updates for headless-friendly loops.",
+      "extracted_constraints": [
+        "Start with synth/fallback so the sim runs without mic permission.",
+        "Apply stereo-derived bias per z-slice with configurable strength and decay.",
+        "Keep FPS throttling to avoid busy-looping on fast devices."
+      ]
+    },
+    "SV5": {
+      "ref": "prototypes/LKB_POCs/98E66S/js/config.js",
+      "why_it_matters": "Collects tunables for grid size, path probabilities, and forgiveness damping.",
+      "extracted_constraints": [
+        "Expose grid, path B, parity, and damping parameters centrally.",
+        "Surface forgiveness as a configurable safeguard.",
+        "Use modest defaults (e.g., grid 14, alpha ~0.16) to keep sim lightweight."
+      ]
+    },
+    "SV6": {
+      "ref": "prototypes/LKB_POCs/AI_Deltas/J8L2Q9/app.js",
+      "why_it_matters": "Demonstrates lens-aware damping, plasticity, and audio fallback via synthetic oscillators.",
+      "extracted_constraints": [
+        "Provide a silent synth fallback when mic is unavailable.",
+        "Incorporate lens-derived modulation of damping/path selection.",
+        "Maintain structural plasticity hooks for future rewiring (not necessarily implemented now)."
+      ]
+    },
+    "SV7": {
+      "ref": "prototypes/Toys/lkb_agi_0001.html",
+      "why_it_matters": "Minimal PhaseCube loop with path B bias and snapshot support for quick inspection.",
+      "extracted_constraints": [
+        "Use plasma/parity noise plus path B branching to avoid stasis.",
+        "Provide simple projection/rendering-independent state handling.",
+        "Keep snapshot/export hooks for observability."
+      ]
+    },
+    "SV8": {
+      "ref": "prototypes/AI_Deltas/LKB/LKBX52D7M9Q3/README.md",
+      "why_it_matters": "Latest prior delta: headless runner with lens mixer, forgiveness, and bias pulses.",
+      "extracted_constraints": [
+        "Keep headless execution with JSON/log summaries.",
+        "Route bias pulses through lens clamps and forgiveness operators.",
+        "Document tunables and testing hooks clearly."
+      ]
+    },
+    "SV9": {
+      "ref": "prototypes/LKB_POCs/AI_Deltas/T4H9K2/src/core/controller.js",
+      "why_it_matters": "Shows controller wiring of bias ingestion, memory blending, and lens scheduling in the render loop.",
+      "extracted_constraints": [
+        "Separate controller logic from lattice/math modules.",
+        "Allow adjustable memory weighting for bias blending.",
+        "Maintain autopilot-friendly tick scheduling using requestAnimationFrame-style timing."
+      ]
+    },
+    "SV10": {
+      "ref": "prototypes/LKB_POCs/AI_Deltas/T4H9K2/src/core/phaseGrid.js",
+      "why_it_matters": "Implements harmonic forgiveness damping and bias-coupled Path B selection with precomputed positions.",
+      "extracted_constraints": [
+        "Clamp Path B probability and bias coupling within safe bounds.",
+        "Apply forgiveness operator to damp divergence when dispersion spikes.",
+        "Precompute lattice positions for reuse instead of recalculating each frame."
+      ]
+    }
+  },
+  "parent_delta_ids": [],
+  "summary": "Adds a headless, lens-aware lattice runner with audio-inspired bias pulses, forgiveness damping, and tunable config/testing scaffolding under a new DeltaID.",
+  "breaking_changes": false,
+  "assumptions": [
+    {
+      "label": "Treat docs/Parallel-Paradox-Design.md as the base docs README for SV1 because no docs/README.md exists.",
+      "type": "Inference",
+      "rationale": "Directory index showed only this document under docs/."
+    },
+    {
+      "label": "Use synthetic bias pulses instead of live audio to satisfy audio mapping constraints without browser APIs.",
+      "type": "Inference",
+      "rationale": "Headless Node context lacks microphone/file input; aligns with prior headless deltas."
+    }
+  ],
+  "sensitive_files_skipped": []
+}

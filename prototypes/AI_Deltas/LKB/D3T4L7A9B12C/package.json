@@ -1,0 +1,14 @@
+{
+  "name": "lkb-d3t4l7a9b12c",
+  "version": "0.1.0",
+  "description": "Lens-aware tri-grid swarm runner with delay-biased coupling for PhaseCube lineage (DeltaID D3T4L7A9B12C).",
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --test"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}

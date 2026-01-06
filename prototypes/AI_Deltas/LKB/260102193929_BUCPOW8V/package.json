@@ -1,0 +1,15 @@
+{
+  "name": "lkb-260102193929-bucpow8v",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Headless harmonic PhaseCube runner with lens-aware bias pulses for Delta 260102193929_BUCPOW8V.",
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node tests/run-tests.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}

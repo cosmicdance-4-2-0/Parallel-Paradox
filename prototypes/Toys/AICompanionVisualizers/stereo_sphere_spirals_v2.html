@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- TODO: Charset declared early, for predictable parsing across all environments -->
+    <meta charset="UTF-8">
+
+    <!-- TODO: Viewport policy, for responsive behavior on all devices including embedded WebViews -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+    <!-- TODO: Describe application purpose, for SEO, sharing, and future indexing -->
+    <meta name="description" content="Stereo audio-reactive sphere spirals visualizer with mic/file input, recording, and screenshot capture.">
+
+    <!-- TODO: Define relevant keywords, for SEO or internal search tooling -->
+    <meta name="keywords" content="audio visualizer, web audio, canvas, generative art, stereo, microphone, recorder">
+
+    <!-- TODO: Author metadata, for attribution and long-term stewardship -->
+    <meta name="author" content="Christopher 'Kisuul' Lohman">
+
+    <!-- TODO: Optional: Helps mobile browsers style UI elements consistently -->
+    <meta name="color-scheme" content="dark light">
+
+    <!-- TODO: Optional: Theme color for mobile address bar / PWA shells -->
+    <meta name="theme-color" content="#000000">
+
+    <!-- TODO: Application title, for browser tabs, OS-level UI, and PWA manifests -->
+    <title>Kisuul Stereo Sphere Spirals — Expressive Center</title>
+
+    <!-- TODO: Minimal reset, for predictable cross-browser styling without heavy normalization -->
+    <style>
+        /* TODO: Universal box-model reset, for layout sanity and composability */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* TODO: Root typography and color baseline, for global consistency */
+        html, body {
+            height: 100%;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            line-height: 1.5;
+            background: #000;
+            color: #fff;
+        }
+
+        /* TODO: Improve text rendering in many environments (optional) */
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* TODO: Main application shell, for predictable vertical composition */
+        #app {
+            width: 100%;
+            height: 100%;
+            display: grid;
+
+            /* TODO: Grid layout chosen, for simple header / body / footer separation */
+            grid-template-rows: auto 1fr auto;
+        }
+
+        /* TODO: Header and footer styling, for consistent padding and alignment */
+        header, footer {
+            padding: 0.6rem 0.8rem;
+            text-align: center;
+        }
+
+        /* TODO: Minimal top bar (your original "bar") */
+        header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(8px);
+
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* TODO: Footer kept minimal; can be reused for versioning/diagnostics */
+        footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.10);
+            opacity: 0.9;
+        }
+
+        /* TODO: Main content container, delegating scroll responsibility to children */
+        main {
+            /* IMPORTANT: In CSS grid layouts, min-height:0 prevents weird overflow bugs */
+            min-height: 0;
+
+            overflow: hidden;    /* Prevent double scrollbars; canvas owns the space */
+            position: relative;  /* Anchor for overlays */
+        }
+
+        /* TODO: Primary render target, for canvas-based rendering systems */
+        #render-target {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+
+            outline: none;
+            touch-action: none;
+        }
+
+        /* TODO: DOM render target, for overlays, UI, SVG, or fallback content */
+        #dom-target {
+            position: absolute;
+            inset: 0;
+
+            /* Default: overlay container does not intercept pointer events */
+            pointer-events: none;
+        }
+
+        /* ===== UI elements adapted from your original code ===== */
+
+        button, label, .pill {
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            border-radius: 10px;
+            padding: 0.45rem 0.7rem;
+            cursor: pointer;
+            font-weight: 600;
+            user-select: none;
+        }
+
+        button:hover, label:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        #status {
+            opacity: 0.9;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.9rem;
+        }
+
+        /* TODO: Debug/telemetry panel */
+        #panel {
+            position: absolute;
+            right: 0.8rem;
+            top: 0.8rem;
+            max-width: min(420px, 92vw);
+
+            padding: 0.7rem 0.8rem;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
+            background: rgba(0, 0, 0, 0.55);
+
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.85rem;
+            line-height: 1.3;
+            white-space: pre-wrap;
+
+            /* IMPORTANT: panel is read-only and should not steal clicks from the canvas */
+            pointer-events: none;
+        }
+
+        /* Optional: If you later want clickable UI in the overlay, use .ui with pointer-events:auto */
+        .ui {
+            pointer-events: auto;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            button:active { transform: none; }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- TODO: Root application container, single mount point for everything -->
+    <div id="app">
+
+        <!-- TODO: Application header, optional and replaceable -->
+        <!-- NOTE: This is your original control bar adapted into the template header. -->
+        <header id="bar">
+            <button id="btnMic">Enable Mic</button>
+
+            <label for="file">Use Audio File</label>
+            <input id="file" type="file" accept="audio/*" />
+
+            <button id="btnStopAudio" disabled>Stop Audio</button>
+
+            <span class="pill">Scene: Stereo Spirals + Expressive Center</span>
+
+            <button id="btnRec">Start Rec</button>
+            <button id="btnShot">Screenshot</button>
+
+            <span id="status">idle (demo features)</span>
+        </header>
+
+        <!-- TODO: Main content region, intentionally unopinionated -->
+        <main>
+            <!-- TODO: Canvas surface, for 2D, WebGL, WebGPU, or custom rendering -->
+            <!-- NOTE: Keep id aligned with your existing logic. -->
+            <canvas id="render-target"></canvas>
+
+            <!-- TODO: DOM surface, for UI, HUDs, debug overlays, or accessibility -->
+            <div id="dom-target">
+                <div id="panel"></div>
+            </div>
+
+            <noscript>
+                <div style="padding:1rem;text-align:center;">
+                    This app requires JavaScript enabled.
+                </div>
+            </noscript>
+        </main>
+
+        <!-- TODO: Application footer, for metadata, controls, or diagnostics -->
+        <footer>
+            <p>Christopher 'Kisuul' Lohman — Version 2.0 — January 04, 2026</p>
+        </footer>
+    </div>
+
+    <!-- TODO: Core application module, intentionally minimal and self-contained -->
+    <script type="module">
+        /**
+         * ============================================================
+         * NOTE ON INTEGRATION
+         * ============================================================
+         * Your original code is preserved in logic and structure.
+         * The primary changes here are:
+         * - mapped element IDs into the template: canvas -> #render-target
+         * - bar already exists as <header id="bar"> so height math stays valid
+         * - panel now lives under #dom-target overlay (same behavior)
+         * - Renderer.resize uses main-area sizing, consistent with the template grid
+         *
+         * No major algorithmic changes to your audio/features/scene logic.
+         */
+
+        /**
+         * ================================
+         * 0) CONFIG — ALL TUNABLE PARAMETERS
+         * ================================
+         * Every significant constant is exposed here. No magic numbers in the code body.
+         * This makes experimentation safe and fast.
+         */
+        const CONFIG = {
+            RENDER: {
+                TARGET_FPS: 60,
+                DPR_MAX: 2,
+                CLEAR_ON_FIRST_FRAME: true,
+                TRAIL_ALPHA: 0.08,
+                BACKGROUND_RGB: [0, 0, 0],
+                ADDITIVE_BLEND_MODE: "lighter",
+                HUD_ENABLED: true,
+            },
+            AUDIO: {
+                MASTER_FFT_SIZE: 1024,
+                CHANNEL_FFT_SIZE: 512,
+                SMOOTHING_TIME_CONSTANT: 0.8,
+                OUTPUT_GAIN: 0.9,
+                BANDS_HZ: [
+                    { name: "sub", from: 20, to: 60 },
+                    { name: "bass", from: 60, to: 180 },
+                    { name: "lowMid", from: 180, to: 600 },
+                    { name: "highMid", from: 600, to: 2400 },
+                    { name: "treble", from: 2400, to: 12000 },
+                ],
+                ONSET: {
+                    FLUX_HISTORY_FRAMES: 120,
+                    THRESHOLD_MULTIPLIER: 1.6,
+                    REFRACTORY_MS: 220,
+                },
+                BPM: {
+                    MIN: 60,
+                    MAX: 200,
+                    INTERVAL_HISTORY: 12,
+                    SMOOTHING: 0.12,
+                },
+                IDLE_DEMO: {
+                    ENABLED: true,
+                    BASE_BPM: 120,
+                    WOBBLE_HZ: 0.35,
+                },
+            },
+            STEREO: {
+                EPS: 1e-6,
+                ORBIT_PHASE_SPEED: 0.35,
+                ORBIT_Y_FREQ: 1.12,
+                ORBIT_Y_RATIO: 0.65,
+                SEPARATION_FROM_WIDTH: 480,
+                SEPARATION_FROM_BASS: 120,
+                MIN_SEPARATION: 40,
+                MAX_SEP_FRACTION_OF_MIN_DIM: 0.4,
+                CENTER_BOOST_BASE: 1.3,
+                CENTER_BOOST_FROM_MONO: 1.5,
+                LEFT_HUE_OFFSET: 0,
+                RIGHT_HUE_OFFSET: 120,
+                CENTER_HUE_OFFSET: 240,
+            },
+            SCENE: {
+                QUAD_COUNT: 16,
+                QUAD_ALPHA: 0.92,
+                COLOR_SPACE: "fixedHSL",
+                HUE_OFFSET_DEG: 0,
+                SPHERE: {
+                    RADIUS_PX: 420,
+                    DEPTH_A: 0.8,
+                    DEPTH_B: 1.8,
+                    SCREEN_CENTER_X_FACTOR: 0.5,
+                    SCREEN_CENTER_Y_FACTOR: 0.5,
+                },
+                MOTION: {
+                    LONGITUDE_SPEED: 1.25,
+                    LATITUDE_GAIN: 1.2,
+                    LATITUDE_WAVE: 0.33,
+                    SPIRAL_AMPLITUDE: 1.8,
+                    SPIRAL_SPEED: 0.8,
+                    PHASE_PER_AGENT: (Math.PI * 2),
+                    SPIRAL_AGENT_PHASE_STEP: 0.5,
+                },
+                SIZE: {
+                    BASE: 10,
+                    AUDIO_GAIN: 18,
+                },
+                AUDIO_MAP: {
+                    SPEED_FROM_BASS: 2.2,
+                    LAT_FROM_BRIGHTNESS: 0.35,
+                    SCALE_FROM_BASS: 0.12,
+                    SCALE_BASE_FACTOR: 0.32,
+                },
+            },
+            FACE: {
+                ENABLED: true, // toggle expressive facial features in center orb
+                EYE_COUNT: 2,
+                MOUTH_COUNT: 4,
+                EYE_BRIGHTNESS_BAND: "highMid",
+                MOUTH_OPEN_BAND: "lowMid",
+                EXPRESSION_GAIN: 1.5,
+                EYE_ALPHA_BOOST: 0.5,
+                MOUTH_SPREAD_GAIN: 1.2,
+            },
+            RECORDING: {
+                ENABLED: true,
+                MIME_CANDIDATES: ["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"],
+                FPS: 60,
+            },
+        };
+
+        // ===== 1) Math & Utilities =====
+        const S = Math.sin;
+        const C = Math.cos;
+        const PI = Math.PI;
+        const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+        /**
+         * Ring buffer for bounded history (onset flux, beat intervals)
+         *
+         * IMPORTANT:
+         * - mean()/std() must iterate in logical order (wrap-aware), not raw array order.
+         *   Otherwise, onset/BPM thresholds drift after the buffer wraps.
+         */
+        class RingBuffer {
+            constructor(capacity) {
+                this.capacity = capacity;
+                this.data = new Array(capacity);
+                this.size = 0;
+                this.write = 0;
+            }
+            push(v) {
+                this.data[this.write] = v;
+                this.write = (this.write + 1) % this.capacity;
+                this.size = Math.min(this.size + 1, this.capacity);
+            }
+            toArray() {
+                const out = [];
+                for (let i = 0; i < this.size; i++) {
+                    const idx = (this.write - this.size + i + this.capacity) % this.capacity;
+                    out.push(this.data[idx]);
+                }
+                return out;
+            }
+            mean() {
+                if (!this.size) return 0;
+                let sum = 0;
+                for (let i = 0; i < this.size; i++) {
+                    const idx = (this.write - this.size + i + this.capacity) % this.capacity;
+                    sum += this.data[idx] ?? 0;
+                }
+                return sum / this.size;
+            }
+            std() {
+                if (this.size < 2) return 0;
+                const m = this.mean();
+                let v = 0;
+                for (let i = 0; i < this.size; i++) {
+                    const idx = (this.write - this.size + i + this.capacity) % this.capacity;
+                    const d = (this.data[idx] ?? 0) - m;
+                    v += d * d;
+                }
+                return Math.sqrt(v / (this.size - 1));
+            }
+        }
+
+        /**
+         * ============================================================
+         * 2) Renderer — canvas setup, resize, frame begin
+         * ============================================================
+         * Minor integration detail:
+         * - in the template, the canvas fills <main>.
+         * - we measure main’s content box instead of using window.innerHeight - barHeight.
+         * - behavior remains the same: canvas buffer matches display size, with DPR cap.
+         */
+        class Renderer {
+            constructor(canvas, mainEl) {
+                this.canvas = canvas;
+                this.mainEl = mainEl;
+
+                // NOTE: alpha:false matches your intent: opaque, generally faster.
+                this.ctx = canvas.getContext("2d", { alpha: false });
+
+                // View size in CSS pixels
+                this.vw = 0;
+                this.vh = 0;
+
+                // Device pixel ratio used for buffer
+                this.dpr = 1;
+
+                // First-frame clear guard
+                this._backgroundDrawn = false;
+            }
+
+            resize() {
+                // DPR: clamp to a sane maximum for perf & predictable visuals
+                this.dpr = Math.min(CONFIG.RENDER.DPR_MAX, Math.max(1, window.devicePixelRatio || 1));
+
+                // Measure the available drawing area (main content box)
+                // This keeps sizing correct even if header/footer height changes.
+                const rect = this.mainEl.getBoundingClientRect();
+                this.vw = Math.max(1, Math.floor(rect.width));
+                this.vh = Math.max(1, Math.floor(rect.height));
+
+                // Keep CSS sizing explicit (matches your original intent)
+                this.canvas.style.width = this.vw + "px";
+                this.canvas.style.height = this.vh + "px";
+
+                // Actual buffer size in device pixels
+                this.canvas.width  = (this.vw * this.dpr) | 0;
+                this.canvas.height = (this.vh * this.dpr) | 0;
+
+                // Coordinate system: draw in CSS pixels
+                this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+                // Reset background draw on resize so trails don't smear oddly after a snap-resize
+                this._backgroundDrawn = false;
+            }
+
+            beginFrame() {
+                const ctx = this.ctx;
+                const [r, g, b] = CONFIG.RENDER.BACKGROUND_RGB;
+
+                // Optional: hard clear on first frame after resize/init
+                if (!this._backgroundDrawn && CONFIG.RENDER.CLEAR_ON_FIRST_FRAME) {
+                    ctx.globalCompositeOperation = "source-over";
+                    ctx.fillStyle = `rgb(${r},${g},${b})`;
+                    ctx.fillRect(0, 0, this.vw, this.vh);
+                    this._backgroundDrawn = true;
+                }
+
+                // Trails: fade previous frame by drawing transparent background
+                ctx.globalCompositeOperation = "source-over";
+                ctx.fillStyle = `rgba(${r},${g},${b},${CONFIG.RENDER.TRAIL_ALPHA})`;
+                ctx.fillRect(0, 0, this.vw, this.vh);
+
+                // Additive blending for the spirals
+                ctx.globalCompositeOperation = CONFIG.RENDER.ADDITIVE_BLEND_MODE;
+            }
+        }
+
+        // ===== 3) AudioEngine — mic/file input, analysers, time sync =====
+        class AudioEngine {
+            constructor() {
+                this.audioCtx = null;
+                this.sourceNode = null;
+                this.mediaSource = null;
+                this.outputGain = null;
+
+                this.masterAnalyser = null;
+                this.leftAnalyser = null;
+                this.rightAnalyser = null;
+
+                this.masterBins = null;
+                this.leftBins = null;
+                this.rightBins = null;
+
+                this.mode = "idle";
+                this.micStream = null;
+
+                this.audioTimeOffset = 0;
+                this._offsetInitialized = false;
+            }
+            ensureContext() {
+                if (this.audioCtx) return this.audioCtx;
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (!AC) throw new Error("Web Audio not supported.");
+                this.audioCtx = new AC();
+                this.audioCtx.resume?.();
+                return this.audioCtx;
+            }
+            _buildAnalysers() {
+                const ac = this.audioCtx;
+
+                this.masterAnalyser = ac.createAnalyser();
+                this.masterAnalyser.fftSize = CONFIG.AUDIO.MASTER_FFT_SIZE;
+                this.masterAnalyser.smoothingTimeConstant = CONFIG.AUDIO.SMOOTHING_TIME_CONSTANT;
+                this.masterBins = new Uint8Array(this.masterAnalyser.frequencyBinCount);
+
+                const splitter = ac.createChannelSplitter(2);
+
+                this.leftAnalyser = ac.createAnalyser();
+                this.rightAnalyser = ac.createAnalyser();
+                this.leftAnalyser.fftSize = this.rightAnalyser.fftSize = CONFIG.AUDIO.CHANNEL_FFT_SIZE;
+                this.leftAnalyser.smoothingTimeConstant = this.rightAnalyser.smoothingTimeConstant = CONFIG.AUDIO.SMOOTHING_TIME_CONSTANT;
+                this.leftBins = new Uint8Array(this.leftAnalyser.frequencyBinCount);
+                this.rightBins = new Uint8Array(this.rightAnalyser.frequencyBinCount);
+
+                this.sourceNode.connect(this.masterAnalyser);
+                this.sourceNode.connect(splitter);
+                splitter.connect(this.leftAnalyser, 0);
+                splitter.connect(this.rightAnalyser, 1);
+            }
+            _resetTimeOffset(visualTimeSec) {
+                this.audioTimeOffset = visualTimeSec - (this.audioCtx?.currentTime || 0);
+                this._offsetInitialized = true;
+            }
+            stop() {
+                try { this.sourceNode?.disconnect(); } catch {}
+                try { this.outputGain?.disconnect(); } catch {}
+
+                if (this.micStream) {
+                    try { this.micStream.getTracks().forEach(tr => tr.stop()); } catch {}
+                    this.micStream = null;
+                }
+
+                this.sourceNode = null;
+                this.masterAnalyser = this.leftAnalyser = this.rightAnalyser = null;
+                this.outputGain = null;
+                this.mode = "idle";
+                this._offsetInitialized = false;
+            }
+            async startMic(visualTimeSec) {
+                if (!window.isSecureContext) {
+                    throw new Error("Mic requires a secure origin (https:// or http://localhost). file:// will not work.");
+                }
+                if (!navigator.mediaDevices?.getUserMedia) {
+                    throw new Error("getUserMedia not available.");
+                }
+
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const ac = this.ensureContext();
+
+                this.stop();
+                this.micStream = stream;
+
+                this.sourceNode = ac.createMediaStreamSource(stream);
+                this._buildAnalysers();
+
+                this.mode = "mic";
+                this._resetTimeOffset(visualTimeSec);
+            }
+            async startFile(audioEl, file, visualTimeSec) {
+                const ac = this.ensureContext();
+                this.stop();
+
+                if (audioEl._objUrl) {
+                    try { URL.revokeObjectURL(audioEl._objUrl); } catch {}
+                }
+                audioEl._objUrl = URL.createObjectURL(file);
+                audioEl.src = audioEl._objUrl;
+
+                await audioEl.play();
+
+                if (!this.mediaSource) this.mediaSource = ac.createMediaElementSource(audioEl);
+                this.sourceNode = this.mediaSource;
+
+                this.outputGain = ac.createGain();
+                this.outputGain.gain.value = CONFIG.AUDIO.OUTPUT_GAIN;
+
+                this.sourceNode.connect(this.outputGain);
+                this.outputGain.connect(ac.destination);
+
+                this._buildAnalysers();
+                this.mode = "file";
+                this._resetTimeOffset(visualTimeSec);
+            }
+            sample() {
+                if (!this.masterAnalyser || !this.leftAnalyser || !this.rightAnalyser) return null;
+
+                this.masterAnalyser.getByteFrequencyData(this.masterBins);
+                this.leftAnalyser.getByteFrequencyData(this.leftBins);
+                this.rightAnalyser.getByteFrequencyData(this.rightBins);
+
+                return {
+                    master: this.masterBins,
+                    left: this.leftBins,
+                    right: this.rightBins,
+                    sampleRate: this.audioCtx.sampleRate
+                };
+            }
+            timeSeconds(visualTimeSec) {
+                if (!this.audioCtx || !this._offsetInitialized) return visualTimeSec;
+                return this.audioCtx.currentTime + this.audioTimeOffset;
+            }
+        }
+
+        // ===== 4) FeatureExtractor — bands, brightness, flux, onset, BPM, stereo metrics =====
+        class FeatureExtractor {
+            constructor() {
+                this.fluxHist = new RingBuffer(CONFIG.AUDIO.ONSET.FLUX_HISTORY_FRAMES);
+                this.lastOnsetMs = 0;
+
+                this.intervalsMs = new RingBuffer(CONFIG.AUDIO.BPM.INTERVAL_HISTORY);
+                this.bpm = CONFIG.AUDIO.IDLE_DEMO.BASE_BPM;
+
+                this.bandMap = null;
+
+                // PERF:
+                // Avoid per-frame allocations by reusing typed arrays.
+                // NOTE: flux needs a stable "previous frame" buffer, so we keep a double buffer for master.
+                this._masterNormWrite = null; // Float32Array
+                this._masterNormPrev = null;  // Float32Array
+                this._leftNorm = null;        // Float32Array
+                this._rightNorm = null;       // Float32Array
+            }
+
+            _ensureNormBuffers(masterLen, leftLen, rightLen) {
+                // Master: double buffer for flux
+                if (!this._masterNormWrite || this._masterNormWrite.length !== masterLen) {
+                    this._masterNormWrite = new Float32Array(masterLen);
+                    this._masterNormPrev = new Float32Array(masterLen);
+                    // On resize, previous contents are meaningless; treat flux as 0 until the next frame.
+                    for (let i = 0; i < masterLen; i++) this._masterNormPrev[i] = 0;
+                }
+                if (!this._leftNorm || this._leftNorm.length !== leftLen) {
+                    this._leftNorm = new Float32Array(leftLen);
+                }
+                if (!this._rightNorm || this._rightNorm.length !== rightLen) {
+                    this._rightNorm = new Float32Array(rightLen);
+                }
+            }
+
+            _fillNorm(out, bins) {
+                // bins is Uint8Array, out is Float32Array same length
+                for (let i = 0; i < bins.length; i++) out[i] = bins[i] / 255;
+            }
+
+            _buildBandMap(binCount, sampleRate) {
+                const nyquist = sampleRate / 2;
+                const binHz = nyquist / binCount;
+
+                const map = CONFIG.AUDIO.BANDS_HZ.map(b => {
+                    const from = clamp(b.from, 0, nyquist);
+                    const to = clamp(b.to, 0, nyquist);
+                    const start = clamp(Math.floor(from / binHz), 0, binCount - 1);
+                    const end = clamp(Math.ceil(to / binHz), start + 1, binCount);
+                    return { name: b.name, start, end };
+                });
+
+                return { binHz, nyquist, map };
+            }
+
+            _bandEnergy(normBins, start, end) {
+                let sum = 0;
+                const n = Math.max(1, end - start);
+                for (let i = start; i < end; i++) sum += normBins[i];
+                return sum / n;
+            }
+
+            _spectralCentroid(normBins, binHz) {
+                let num = 0;
+                let den = 0;
+                for (let i = 0; i < normBins.length; i++) {
+                    const m = normBins[i];
+                    const f = i * binHz;
+                    num += f * m;
+                    den += m;
+                }
+                return den > 0 ? num / den : 0;
+            }
+
+            _spectralFlux(normBins, prev) {
+                if (!prev) return 0;
+                let flux = 0;
+                const n = Math.min(normBins.length, prev.length);
+                for (let i = 0; i < n; i++) {
+                    const d = normBins[i] - prev[i];
+                    if (d > 0) flux += d;
+                }
+                return flux;
+            }
+
+            _detectOnset(flux, tMs) {
+                this.fluxHist.push(flux);
+                const mean = this.fluxHist.mean();
+                const std = this.fluxHist.std();
+                const threshold = mean + std * CONFIG.AUDIO.ONSET.THRESHOLD_MULTIPLIER;
+
+                const refractoryOk = (tMs - this.lastOnsetMs) > CONFIG.AUDIO.ONSET.REFRACTORY_MS;
+                const onset = refractoryOk && flux > threshold;
+
+                if (onset) {
+                    if (this.lastOnsetMs > 0) this.intervalsMs.push(tMs - this.lastOnsetMs);
+                    this.lastOnsetMs = tMs;
+                }
+                return { onset };
+            }
+
+            _updateBpm() {
+                const arr = this.intervalsMs.toArray().filter(x => x > 0);
+                if (arr.length < 2) return this.bpm;
+
+                arr.sort((a,b)=>a-b);
+                const mid = (arr.length / 2) | 0;
+                const medMs = arr.length % 2 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
+
+                const detected = clamp(60000 / medMs, CONFIG.AUDIO.BPM.MIN, CONFIG.AUDIO.BPM.MAX);
+                this.bpm = this.bpm * (1 - CONFIG.AUDIO.BPM.SMOOTHING) + detected * CONFIG.AUDIO.BPM.SMOOTHING;
+                return this.bpm;
+            }
+
+            sample(audioSample, visualTimeSec, tMs) {
+                if (!audioSample) {
+                    if (!CONFIG.AUDIO.IDLE_DEMO.ENABLED) {
+                        return {
+                            bands: {}, bass: 0, brightness: 0, flux: 0,
+                            onset: false, bpm: this.bpm,
+                            stereo: { L: 0, R: 0, mid: 0, side: 0, lrDiff: 0 }
+                        };
+                    }
+
+                    const t = visualTimeSec;
+                    const wob = CONFIG.AUDIO.IDLE_DEMO.WOBBLE_HZ;
+
+                    const bass = clamp(0.14 + 0.10 * S(t * (wob * 2 * PI)) + 0.05 * S(t * 2.2), 0, 1);
+                    const bright = clamp(0.10 + 0.08 * S(t * 1.1 + 1.3), 0, 1);
+
+                    this.bpm = CONFIG.AUDIO.IDLE_DEMO.BASE_BPM + 10 * S(t * wob);
+
+                    return {
+                        bands: { sub: bass*0.6, bass, lowMid: bass*0.5, highMid: bright*0.7, treble: bright },
+                        bass,
+                        brightness: bright,
+                        onset: false,
+                        bpm: this.bpm,
+                        stereo: { L: bass*0.9, R: bass*0.9, mid: bass, side: 0, lrDiff: 0 }
+                    };
+                }
+
+                // --- Normalize bins into reusable Float32 buffers (no per-frame allocations) ---
+                this._ensureNormBuffers(audioSample.master.length, audioSample.left.length, audioSample.right.length);
+
+                // Fill current (write) master buffer
+                this._fillNorm(this._masterNormWrite, audioSample.master);
+                this._fillNorm(this._leftNorm, audioSample.left);
+                this._fillNorm(this._rightNorm, audioSample.right);
+
+                // Band map can depend on bin count (fftSize), so validate length.
+                if (!this.bandMap || this.bandMap.map[0].end > this._masterNormWrite.length) {
+                    this.bandMap = this._buildBandMap(this._masterNormWrite.length, audioSample.sampleRate);
+                }
+
+                // Compute features
+                const bands = {};
+                for (const b of this.bandMap.map) bands[b.name] = this._bandEnergy(this._masterNormWrite, b.start, b.end);
+
+                const bass = bands.bass ?? 0;
+                const brightness = clamp(this._spectralCentroid(this._masterNormWrite, this.bandMap.binHz) / this.bandMap.nyquist, 0, 1);
+
+                const flux = this._spectralFlux(this._masterNormWrite, this._masterNormPrev);
+
+                // Swap master buffers so "prev" remains stable for the next frame.
+                const tmp = this._masterNormPrev;
+                this._masterNormPrev = this._masterNormWrite;
+                this._masterNormWrite = tmp;
+
+                const { onset } = this._detectOnset(flux, tMs);
+                const bpm = this._updateBpm();
+
+                const L = this._bandEnergy(this._leftNorm, 0, this._leftNorm.length);
+                const R = this._bandEnergy(this._rightNorm, 0, this._rightNorm.length);
+                const mid = (L + R) / 2;
+                const side = Math.abs(L - R) / 2;
+                const lrDiff = clamp(L - R, -1, 1);
+
+                return { bands, bass, brightness, flux, onset, bpm, stereo: { L, R, mid, side, lrDiff } };
+            }
+        }
+
+        // ===== 5) SphereSpiralsScene — core visual (with optional facial bias for center) =====
+        class SphereSpiralsScene {
+            constructor(options = {}) {
+                this.colorSpace = options.colorSpace ?? CONFIG.SCENE.COLOR_SPACE;
+                this.hueOffsetDeg = options.hueOffsetDeg ?? CONFIG.SCENE.HUE_OFFSET_DEG;
+
+                // Center-only expressive features:
+                // - Default false to avoid extra draw cost on left/right orbs.
+                this.faceEnabled = options.faceEnabled ?? false;
+
+                this.colors = this._makeColors();
+                this.phase = new Float32Array(CONFIG.SCENE.QUAD_COUNT);
+
+                for (let k = 0; k < CONFIG.SCENE.QUAD_COUNT; k++) {
+                    this.phase[k] = (k / CONFIG.SCENE.QUAD_COUNT) * CONFIG.SCENE.MOTION.PHASE_PER_AGENT;
+                }
+            }
+
+            _makeColors() {
+                const n = CONFIG.SCENE.QUAD_COUNT;
+                const alpha = CONFIG.SCENE.QUAD_ALPHA;
+                const colors = new Array(n);
+
+                if (this.colorSpace === "fixedHSL") {
+                    for (let k = 0; k < n; k++) {
+                        const hue = (this.hueOffsetDeg + (k * (360 / n))) % 360;
+                        colors[k] = `hsla(${hue},100%,65%,${alpha})`;
+                    }
+                } else {
+                    for (let k = 0; k < n; k++) {
+                        const r = (128 + 127 * S(k * 2.4)) | 0;
+                        const g = (128 + 127 * S(k * 2.4 + 2.1)) | 0;
+                        const b = (128 + 127 * S(k * 2.4 + 4.2)) | 0;
+                        colors[k] = `rgba(${r},${g},${b},${alpha})`;
+                    }
+                }
+                return colors;
+            }
+
+            draw(ctx, vw, vh, tSec, features, overrideCx, overrideCy, bassOverride) {
+                const cx = overrideCx ?? vw * CONFIG.SCENE.SPHERE.SCREEN_CENTER_X_FACTOR;
+                const cy = overrideCy ?? vh * CONFIG.SCENE.SPHERE.SCREEN_CENTER_Y_FACTOR;
+
+                const bass = bassOverride ?? (features.bass ?? 0);
+                const brightness = features.brightness ?? 0;
+
+                const speed = CONFIG.SCENE.MOTION.LONGITUDE_SPEED * (1 + bass * CONFIG.SCENE.AUDIO_MAP.SPEED_FROM_BASS);
+                const latGain = CONFIG.SCENE.MOTION.LATITUDE_GAIN * (1 + brightness * CONFIG.SCENE.AUDIO_MAP.LAT_FROM_BRIGHTNESS);
+
+                const minDim = Math.min(vw, vh);
+                const sphereRadius = minDim * CONFIG.SCENE.AUDIO_MAP.SCALE_BASE_FACTOR * (1 + bass * CONFIG.SCENE.AUDIO_MAP.SCALE_FROM_BASS);
+
+                const depthA = CONFIG.SCENE.SPHERE.DEPTH_A;
+                const depthB = CONFIG.SCENE.SPHERE.DEPTH_B;
+
+                const n = CONFIG.SCENE.QUAD_COUNT;
+
+                // Only the center orb should get the face features.
+                const faceOn = this.faceEnabled && CONFIG.FACE.ENABLED;
+                const total = n + (faceOn ? (CONFIG.FACE.EYE_COUNT + CONFIG.FACE.MOUTH_COUNT) : 0);
+
+                // Regex fix: replace only the last alpha component, not the whole parameter list.
+                // Works for hsla(...,a) and rgba(...,a).
+                const alphaTailRegex = /,[^,]+\)$/;
+
+                for (let k = 0; k < total; k++) {
+                    let isFeature = false;
+                    let type = "";
+                    let idx = 0;
+
+                    if (faceOn && k >= n) {
+                        isFeature = true;
+                        const f = k - n;
+                        type = f < CONFIG.FACE.EYE_COUNT ? "eye" : "mouth";
+                        idx = type === "eye" ? f : f - CONFIG.FACE.EYE_COUNT;
+                    }
+
+                    const p = isFeature ? 0 : this.phase[k % n];
+
+                    let aBias = 0;
+                    let bBias = 0;
+                    let sizeBoost = 1;
+                    let alphaBoost = 1;
+
+                    if (isFeature) {
+                        if (type === "eye") {
+                            aBias = (idx - (CONFIG.FACE.EYE_COUNT - 1) / 2) * 0.6;
+                            bBias = 0.45;
+
+                            const energy = features.bands?.[CONFIG.FACE.EYE_BRIGHTNESS_BAND] ?? 0;
+                            sizeBoost = 1 + energy * CONFIG.FACE.EXPRESSION_GAIN;
+                            alphaBoost = 1 + energy * CONFIG.FACE.EYE_ALPHA_BOOST;
+                        } else if (type === "mouth") {
+                            const energy = features.bands?.[CONFIG.FACE.MOUTH_OPEN_BAND] ?? 0;
+                            const spread = energy * CONFIG.FACE.MOUTH_SPREAD_GAIN;
+
+                            aBias = (idx / (CONFIG.FACE.MOUTH_COUNT - 1) - 0.5) * 1.2 * (1 + spread);
+                            bBias = -0.55 - energy * 0.4;
+
+                            sizeBoost = 1 + energy * 0.9;
+                        }
+                    }
+
+                    const spiral =
+                        S(
+                            tSec * CONFIG.SCENE.MOTION.SPIRAL_SPEED * speed +
+                            (k % n) * CONFIG.SCENE.MOTION.SPIRAL_AGENT_PHASE_STEP
+                        ) * CONFIG.SCENE.MOTION.SPIRAL_AMPLITUDE;
+
+                    let a = tSec * speed + p + spiral + aBias;
+                    let b = S(a * CONFIG.SCENE.MOTION.LATITUDE_WAVE + p) * latGain + bBias;
+
+                    const X = C(b) * C(a);
+                    const Y = S(b);
+                    const Z = C(b) * S(a);
+
+                    const d = Z * depthA + depthB;
+                    const s = (CONFIG.SCENE.SIZE.BASE + bass * CONFIG.SCENE.SIZE.AUDIO_GAIN) / d * sizeBoost;
+
+                    let color = this.colors[k % n];
+
+                    // Apply feature alpha boost safely.
+                    if (isFeature) {
+                        const newAlpha = clamp(alphaBoost * CONFIG.SCENE.QUAD_ALPHA, 0, 1);
+                        color = color.replace(alphaTailRegex, `,${newAlpha})`);
+                    }
+
+                    ctx.fillStyle = color;
+                    ctx.fillRect(
+                        cx + (X * sphereRadius) / d - s / 2,
+                        cy + (Y * sphereRadius) / d - s / 2,
+                        s,
+                        s
+                    );
+                }
+            }
+        }
+
+        // ===== 6) Recorder =====
+        class Recorder {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.recorder = null;
+                this.chunks = [];
+                this.isRecording = false;
+                this.mime = null;
+            }
+            _chooseMime() {
+                for (const m of CONFIG.RECORDING.MIME_CANDIDATES) {
+                    if (MediaRecorder.isTypeSupported(m)) return m;
+                }
+                return "";
+            }
+            start() {
+                if (!CONFIG.RECORDING.ENABLED || this.isRecording) return;
+
+                const stream = this.canvas.captureStream(CONFIG.RECORDING.FPS);
+                this.mime = this._chooseMime();
+                this.chunks = [];
+
+                this.recorder = new MediaRecorder(stream, this.mime ? { mimeType: this.mime } : undefined);
+
+                this.recorder.ondataavailable = e => {
+                    if (e.data && e.data.size) this.chunks.push(e.data);
+                };
+
+                this.recorder.onstop = () => {
+                    const blob = new Blob(this.chunks, { type: this.mime || "video/webm" });
+                    const url = URL.createObjectURL(blob);
+
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `stereo_spirals_${Date.now()}.webm`;
+                    a.click();
+
+                    setTimeout(() => URL.revokeObjectURL(url), 5000);
+                };
+
+                this.recorder.start();
+                this.isRecording = true;
+            }
+            stop() {
+                if (!this.isRecording) return;
+                this.recorder.stop();
+                this.isRecording = false;
+            }
+            toggle() { this.isRecording ? this.stop() : this.start(); }
+        }
+
+        /**
+         * ============================================================
+         * 7) WIRING (DOM + module instances)
+         * ============================================================
+         * IDs are mapped into the template:
+         * - canvas: #render-target
+         * - panel:  #panel (inside #dom-target overlay)
+         * - bar:    #bar (header)
+         */
+        const mainEl = document.querySelector("main");
+        const canvas = document.getElementById("render-target");
+        const panel = document.getElementById("panel");
+        const statusEl = document.getElementById("status");
+        const btnMic = document.getElementById("btnMic");
+        const btnStopAudio = document.getElementById("btnStopAudio");
+        const fileInput = document.getElementById("file");
+        const btnRec = document.getElementById("btnRec");
+        const btnShot = document.getElementById("btnShot");
+
+        const audioEl = new Audio();
+
+        const renderer = new Renderer(canvas, mainEl);
+        const audio = new AudioEngine();
+        const extractor = new FeatureExtractor();
+        const recorder = new Recorder(canvas);
+
+        // Initial sizing
+        renderer.resize();
+
+        // Keep canvas matched to layout changes
+        window.addEventListener("resize", () => renderer.resize(), { passive: true });
+
+        function setStatus(msg) { statusEl.textContent = msg; }
+
+        function screenshot() {
+            const url = canvas.toDataURL("image/png");
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `stereo_spirals_${Date.now()}.png`;
+            a.click();
+        }
+
+        btnMic.addEventListener("click", async () => {
+            try {
+                setStatus("mic: requesting…");
+                await audio.startMic(visualTime);
+                setStatus("mic: active ✅");
+                btnStopAudio.disabled = false;
+            } catch (e) {
+                setStatus("mic: failed ❌");
+                console.error(e);
+            }
+        });
+
+        btnStopAudio.addEventListener("click", () => {
+            audio.stop();
+
+            // IMPORTANT: stop the <audio> element too, or it keeps playing (battery + CPU).
+            try { audioEl.pause(); audioEl.currentTime = 0; } catch {}
+
+            // Free the last object URL immediately (not only on next file load).
+            if (audioEl._objUrl) {
+                try { URL.revokeObjectURL(audioEl._objUrl); } catch {}
+                audioEl._objUrl = null;
+            }
+
+            setStatus("idle (demo features)");
+            btnStopAudio.disabled = true;
+        });
+
+        fileInput.addEventListener("change", async ev => {
+            const file = ev.target.files?.[0];
+            if (!file) return;
+
+            try {
+                setStatus(`file: loading ${file.name}…`);
+                await audio.startFile(audioEl, file, visualTime);
+                setStatus(`file: playing ✅ (${file.name})`);
+                btnStopAudio.disabled = false;
+            } catch (e) {
+                setStatus("file: failed ❌");
+                console.error(e);
+            } finally {
+                fileInput.value = "";
+            }
+        });
+
+        btnRec.addEventListener("click", () => {
+            recorder.toggle();
+            btnRec.textContent = recorder.isRecording ? "Stop Rec" : "Start Rec";
+            setStatus(
+                recorder.isRecording
+                    ? "recording… 🎥"
+                    : (audio.mode === "idle" ? "idle (demo features)" : `${audio.mode}: active ✅`)
+            );
+        });
+
+        btnShot.addEventListener("click", screenshot);
+
+        // Stereo scenes
+        const sceneCenter = new SphereSpiralsScene({
+            hueOffsetDeg: CONFIG.STEREO.CENTER_HUE_OFFSET,
+            faceEnabled: true,  // expressive center only
+        });
+        const sceneLeft = new SphereSpiralsScene({
+            hueOffsetDeg: CONFIG.STEREO.LEFT_HUE_OFFSET,
+            faceEnabled: false,
+        });
+        const sceneRight = new SphereSpiralsScene({
+            hueOffsetDeg: CONFIG.STEREO.RIGHT_HUE_OFFSET,
+            faceEnabled: false,
+        });
+
+        /**
+         * ============================================================
+         * 8) MAIN LOOP
+         * ============================================================
+         * Your original loop is preserved:
+         * - visualTime accumulates dt
+         * - audio time is mapped via offset to keep visuals synced to audio clock
+         * - features extracted per frame
+         * - three spheres drawn: center (expressive), left, right
+         * - optional HUD panel output
+         */
+        let lastNow = performance.now();
+        let visualTime = 0;
+        let fpsAcc = 0, fpsFrames = 0, fps = 0;
+
+        function tick(now) {
+            // dt clamp to avoid giant jumps on resume
+            const dt = clamp((now - lastNow) / 1000, 0, 0.05);
+            lastNow = now;
+            visualTime += dt;
+
+            // Keep renderer sized to layout (covers rare cases where resize doesn't fire)
+            // NOTE: Not a logic change; just defensive correctness for responsive layouts.
+            // If you want strictly original behavior, remove this line.
+            renderer.resize();
+
+            const tSec = audio.timeSeconds(visualTime);
+            const sample = audio.sample();
+            const feat = extractor.sample(sample, tSec, now);
+
+            renderer.beginFrame();
+
+            const mid = feat.stereo?.mid ?? 0;
+            const side = feat.stereo?.side ?? 0;
+
+            const width = side / (mid + CONFIG.STEREO.EPS);
+            const minDim = Math.min(renderer.vw, renderer.vh);
+
+            let separationRadius =
+                width * CONFIG.STEREO.SEPARATION_FROM_WIDTH +
+                (feat.bass ?? 0) * CONFIG.STEREO.SEPARATION_FROM_BASS;
+
+            separationRadius = clamp(
+                separationRadius,
+                CONFIG.STEREO.MIN_SEPARATION,
+                minDim * CONFIG.STEREO.MAX_SEP_FRACTION_OF_MIN_DIM
+            );
+
+            const orbitPhase = tSec * CONFIG.STEREO.ORBIT_PHASE_SPEED;
+
+            const cx = renderer.vw / 2;
+            const cy = renderer.vh / 2;
+
+            const centerBoost =
+                CONFIG.STEREO.CENTER_BOOST_BASE +
+                (1 - clamp(width, 0, 1)) * CONFIG.STEREO.CENTER_BOOST_FROM_MONO;
+
+            const centerEnergy = mid * centerBoost;
+            sceneCenter.draw(renderer.ctx, renderer.vw, renderer.vh, tSec, feat, cx, cy, centerEnergy);
+
+            const leftX = cx + C(orbitPhase) * separationRadius;
+            const leftY = cy + S(orbitPhase * CONFIG.STEREO.ORBIT_Y_FREQ) * separationRadius * CONFIG.STEREO.ORBIT_Y_RATIO;
+            sceneLeft.draw(renderer.ctx, renderer.vw, renderer.vh, tSec, feat, leftX, leftY, feat.stereo?.L ?? 0);
+
+            const rightX = cx + C(orbitPhase + PI) * separationRadius;
+            const rightY = cy + S(orbitPhase * CONFIG.STEREO.ORBIT_Y_FREQ + PI) * separationRadius * CONFIG.STEREO.ORBIT_Y_RATIO;
+            sceneRight.draw(renderer.ctx, renderer.vw, renderer.vh, tSec, feat, rightX, rightY, feat.stereo?.R ?? 0);
+
+            if (CONFIG.RENDER.HUD_ENABLED) {
+                fpsAcc += dt;
+                fpsFrames++;
+                if (fpsAcc >= 0.5) {
+                    fps = fpsFrames / fpsAcc;
+                    fpsAcc = 0;
+                    fpsFrames = 0;
+                }
+
+                const bass = (feat.bass ?? 0).toFixed(3);
+                const bright = (feat.brightness ?? 0).toFixed(3);
+                const bpm = (feat.bpm ?? 0).toFixed(1);
+                const sep = separationRadius.toFixed(0);
+
+                panel.textContent =
+                    `mode: ${audio.mode}\n` +
+                    `fps: ${fps.toFixed(1)}\n` +
+                    `bpm: ${bpm} onset: ${feat.onset ? "YES" : "no"}\n` +
+                    `bass: ${bass} bright: ${bright}\n` +
+                    `stereo mid/side: ${mid.toFixed(3)} / ${side.toFixed(3)}\n` +
+                    `width: ${width.toFixed(3)}\n` +
+                    `separation: ${sep}px\n` +
+                    `face: ${CONFIG.FACE.ENABLED ? "on" : "off"}`;
+            } else {
+                panel.textContent = "";
+            }
+
+            requestAnimationFrame(tick);
+        }
+
+        requestAnimationFrame(tick);
+        setStatus("idle (demo features). Use Mic or Audio File.");
+    </script>
+</body>
+</html>

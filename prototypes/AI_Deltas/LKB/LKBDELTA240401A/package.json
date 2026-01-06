@@ -1,0 +1,14 @@
+{
+  "name": "lkbdelta240401a",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "PhaseCube-inspired lattice with bias fields and forgiveness damping for LKB delta LKBDELTA240401A.",
+  "main": "src/index.js",
+  "scripts": {
+    "demo": "node src/demo.js",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.0"
+  }
+}

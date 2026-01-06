@@ -1,0 +1,282 @@
+LKB Delta Protocol — Repo-Resident Prompt
+Purpose: Force a code-generative agent to produce safe, auditable, reproducible deltas inside a GitHub repo.
+Mode: Read-only analysis of existing files + additive output in a single delta directory.
+
+================================================================================
+0) NON-NEGOTIABLES (READ THIS FIRST)
+================================================================================
+
+0.1 Scope Lock
+- You have direct access to my GitHub repository.
+- You MUST treat all existing files as read-only.
+- You MUST NOT modify, delete, rename, or move any existing file unless I explicitly instruct you to do so.
+- You MUST NOT rewrite git history, alter tags, or manipulate branches.
+
+0.2 Delta Lock (Additive-only Output)
+- All new work for this iteration MUST live ONLY inside:
+  prototypes/AI_Deltas/LKB/<DeltaID>/
+- You MUST NOT create or write files outside that directory.
+- You MUST NOT reference or depend on files outside that directory except for reading sources during analysis.
+
+0.3 No Phantom Claims
+- You MUST NOT claim you “read” or “analyzed” a file unless you actually opened and inspected its contents.
+- You MUST NOT reference code modules, CLI commands, APIs, paths, or behaviors that do not exist or that you did not create in THIS delta directory.
+- If uncertain, label it explicitly as Inference or Speculation and keep it out of run instructions.
+
+0.4 Secrets / Sensitive Material Policy
+- DO NOT open, reproduce, or summarize contents of sensitive files (even if visible), including any file matching:
+  .env*, *secret*, *key*, *token*, *credential*, *password*, *private*, *.pem, *.p12, *.keystore
+- If encountered during discovery, record the path as skipped in DELTA.json under sensitive_files_skipped and do not read further.
+
+================================================================================
+1) SCOPE: DIRECTORIES YOU MAY READ (READ-ONLY)
+================================================================================
+
+You may read (analyze) existing files only within these directories:
+- docs/
+- prototypes/LKB_POCs/
+- prototypes/Toys/
+- prototypes/AI_Deltas/LKB/
+
+You MUST NOT read outside these directories unless I explicitly expand scope.
+
+================================================================================
+2) DELTA TRACKING (REQUIRED)
+================================================================================
+
+2.1 DeltaID Generation
+Generate a semi-unique DeltaID that is 20–26 characters and filesystem-safe.
+
+REQUIRED FORMAT (deterministic + random):
+- DeltaID = YYMMDDHHMMSS_<8 base36 chars>
+Example: 260102193045_8K4M2ZQ1
+
+Rules:
+- Only [A-Z0-9_] allowed.
+- No ambiguous characters is preferred but not required (O/0, I/1).
+
+2.2 DeltaID Usage
+- Use DeltaID in filenames/paths as required.
+- If referencing prior work, cite it explicitly by DeltaID (no vague “previous delta” language).
+
+================================================================================
+3) OUTPUT LOCATION (NEW FILES LIVE HERE)
+================================================================================
+
+Create EXACTLY one new subdirectory:
+- prototypes/AI_Deltas/LKB/<DeltaID>/
+
+Everything you create MUST be inside it.
+
+================================================================================
+4) SOURCE VECTORS (SV1–SV10): EXPLICIT LINEAGE REQUIRED
+================================================================================
+
+You MUST select EXACTLY 10 Source Vectors SV1..SV10 that govern this delta.
+
+4.1 Mandatory Source Vectors
+- SV1 = base README at root of docs/ (docs/README.md preferred)
+- SV2 = base README at root of prototypes/LKB_POCs/ (prototypes/LKB_POCs/README.md preferred)
+- SV3 = prototype html:
+  prototypes/LKB_POCs/phasecube_dreaming_0001.html
+
+4.2 SV4–SV10 Requirements (hard constraints)
+SV4–SV10 MUST include, at minimum:
+- At least 2 non-README code files (any language) relevant to the upgrade path.
+- At least 1 design/planning/spec doc (if any exist in scope).
+- At least 1 prior delta (by DeltaID) IF any exist in prototypes/AI_Deltas/LKB/ (otherwise note “none found”).
+
+4.3 For Each SV, Record:
+- identifier: SV#
+- path OR DeltaID
+- why_it_matters: 1–2 lines
+- extracted_constraints: 1–3 constraints/requirements you will honor
+
+4.4 Citation Rule
+When making decisions derived from sources, cite SV identifiers inline:
+- Example: “We implement X per SV4 and SV7.”
+
+================================================================================
+5) REPOSITORY DISCOVERY PROTOCOL (REQUIRED, BOUNDED)
+================================================================================
+
+You MUST follow this discovery protocol to avoid token blowups and fake analysis.
+
+PHASE A — Index
+- Produce a file index for the scoped directories (paths + sizes).
+- If directory is huge, produce a summarized index by subfolder, then a detailed index for only relevant subfolders.
+
+PHASE B — Select Reading Set
+- Identify candidates for SV1..SV10 from the index.
+- Explicitly list what you will open/read and why (brief).
+
+PHASE C — Open and Read
+- Open/read SV candidates and any minimal additional files needed to extract constraints.
+- DO NOT claim a file was “analyzed” unless opened/read.
+
+PHASE D — Stop Conditions
+- If SV1, SV2, or SV3 cannot be found:
+  - Create the delta directory
+  - Write DELTA.json with status="blocked" and explain why
+  - Write README.md with a “Blocked” section
+  - STOP (no implementation)
+
+================================================================================
+6) REQUIRED DELTA MANIFEST: DELTA.json (STRICT)
+================================================================================
+
+Create:
+- prototypes/AI_Deltas/LKB/<DeltaID>/DELTA.json
+
+DELTA.json MUST be valid JSON. It MUST contain AT MINIMUM:
+
+{
+  "delta_id": "<DeltaID>",
+  "created_utc": "<ISO-8601 UTC timestamp>",
+  "status": "ok|blocked",
+  "source_paths_analyzed": ["docs/", "prototypes/LKB_POCs/", "..."],
+  "source_vectors": {
+    "SV1": {
+      "ref": "docs/README.md",
+      "why_it_matters": "...",
+      "extracted_constraints": ["...", "..."]
+    },
+    ...
+    "SV10": { ... }
+  },
+  "parent_delta_ids": [],
+  "summary": "1–3 sentences",
+  "breaking_changes": false,
+  "assumptions": [
+    {"label": "…", "type": "Inference|Speculation", "rationale": "…"}
+  ],
+  "sensitive_files_skipped": ["..."]
+}
+
+Rules:
+- parent_delta_ids must be empty list if none.
+- assumptions list must include any assumption not directly supported by SVs.
+- If blocked: status="blocked", breaking_changes=false, and summary should explain the block.
+
+================================================================================
+7) UPGRADE INTENT (VERSIONED, EXPLICIT)
+================================================================================
+
+You are making a new version. You MUST:
+- Choose an upgrade path consistent with SV1/SV2/SV3 and the selected SV4–SV10.
+- State in the delta README:
+  - Upgrade path selected
+  - Which SVs justify it
+  - In-scope vs out-of-scope
+  - What success looks like for THIS delta
+
+Hard rule:
+- If sources do not justify an “upgrade path,” mark it as blocked or produce a minimal “infrastructure delta” (scaffolding + tests) and label choices as Inference.
+
+================================================================================
+8) REQUIRED DELIVERABLES (INSIDE DELTA FOLDER ONLY)
+================================================================================
+
+Inside prototypes/AI_Deltas/LKB/<DeltaID>/, produce:
+
+8.1 README.md MUST include:
+- Purpose + scope
+- Architecture overview (text + simple diagram if helpful)
+- “Happy path” run command OR explicit “Not runnable yet” with reasons
+- Configuration knobs / tunables (even if minimal)
+- Testing instructions (exact commands)
+- Limitations
+- Source Vectors (SV1–SV10) section (table or list)
+- Explicit references to parent_delta_ids (if any)
+- Assumptions section (Inference/Speculation list)
+
+8.2 CHANGELOG.md MUST include:
+- What changed vs baseline (or parent delta)
+- Added/Changed/Fixed/Removed
+- Breaking changes callout
+
+8.3 Code
+- Place implementation code in a clear structure (src/, lib/, etc.)
+- Keep interfaces small and documented
+- Mark expansion points with:
+  TODO: <thing>, <reason(s)>
+
+8.4 tests/
+MUST include at least:
+- Smoke test: exercises main entry path; asserts at least one observable output.
+- Unit tests: cover at least one critical logic function referenced in README.
+
+8.5 Dependency spec
+- requirements.txt OR pyproject.toml OR package.json (as appropriate)
+- Include pinned versions or compatible ranges
+- README must justify any non-standard dependencies briefly.
+
+================================================================================
+9) DESIGN & CODE STANDARDS (ENFORCED)
+================================================================================
+
+Design goals:
+- Minimal but robust and complete
+- Modular and scalable
+- Tunable and configurable
+- Human-readable code with comments where intent is non-obvious
+
+Dependency policy:
+- Prefer standard libraries.
+- Use external dependencies only if they meaningfully improve correctness, clarity, or maintainability.
+- Any dependency choice not justified by SVs must be recorded as an Inference in README + DELTA.json assumptions.
+
+Quality policy:
+- Provide explicit error messages for invalid config, missing files, etc.
+- Avoid magic constants; expose tunables.
+- Keep code “diff-friendly” (small files, clear names).
+
+================================================================================
+10) HYGIENE RULES (DON’T BE A MENACE)
+================================================================================
+
+- No deletion, no renames, no moving existing files.
+- No credentials, no secrets, no tokens in output.
+- No network calls unless explicitly required by SVs and documented.
+- Default to deterministic behavior where practical.
+- If any step is uncertain: label it as Inference or Speculation and minimize impact.
+
+================================================================================
+11) EXECUTION ORDER (MUST FOLLOW)
+================================================================================
+
+You MUST proceed in this exact order:
+
+1) Generate DeltaID
+2) Create delta directory prototypes/AI_Deltas/LKB/<DeltaID>/
+3) PHASE A: Produce file index for scoped directories
+4) Locate SV1, SV2, SV3
+5) Select SV4–SV10 per the hard constraints
+6) Write DELTA.json (status ok|blocked)
+7) Write README.md skeleton with scope + upgrade intent + SV table
+8) Implement code
+9) Implement tests
+10) Write CHANGELOG.md
+11) Validate deliverables exist and run instructions match reality
+
+Validation checklist (must satisfy before finalizing):
+- [ ] All new files are under prototypes/AI_Deltas/LKB/<DeltaID>/
+- [ ] DELTA.json exists and is valid JSON
+- [ ] Exactly 10 SVs selected; SV1–SV3 mandatory satisfied
+- [ ] README includes upgrade intent, scope, SV section, assumptions, run/test steps
+- [ ] Smoke test + unit tests exist and meaningfully assert behavior
+- [ ] Dependency spec exists with justification
+- [ ] No secrets or sensitive content included
+- [ ] No phantom references to non-existent files/commands
+
+================================================================================
+12) START CONDITION (BEGIN NOW)
+================================================================================
+
+Begin by:
+- Locating SV1 and SV2 (base READMEs) and SV3 (prototype html),
+- Selecting SV4–SV10,
+- Writing DELTA.json,
+- Then implementing the delta deliverables.
+
+END OF DOCUMENT

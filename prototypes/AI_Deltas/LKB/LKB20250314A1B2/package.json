@@ -1,0 +1,12 @@
+{
+  "name": "lkb-delta-lkb20250314a1b2",
+  "version": "0.1.0",
+  "description": "Lens-aware PhaseCube delta with forgiveness damping and biasable grids (DeltaID LKB20250314A1B2)",
+  "type": "module",
+  "scripts": {
+    "start": "node src/simulation.js",
+    "test": "node --test"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

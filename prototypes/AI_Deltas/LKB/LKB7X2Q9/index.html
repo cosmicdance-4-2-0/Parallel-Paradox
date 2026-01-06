@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PhaseCube Delta LKB7X2Q9</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0c10;
+        --panel: #11141c;
+        --text: #d2d9e6;
+        --accent: #6ec5ff;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        height: 100vh;
+      }
+      #view {
+        width: 100%;
+        height: 100vh;
+        background: radial-gradient(120% 120% at 50% 30%, #121926, #090c12);
+        cursor: grab;
+      }
+      #panel {
+        background: var(--panel);
+        padding: 16px;
+        overflow-y: auto;
+        box-shadow: -8px 0 24px rgba(0, 0, 0, 0.35);
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+      .section {
+        margin-bottom: 18px;
+      }
+      label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+        font-size: 13px;
+      }
+      input[type="range"] {
+        width: 100%;
+      }
+      button {
+        background: var(--accent);
+        border: none;
+        color: #0b0c10;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .muted {
+        color: #8f9bb3;
+        font-size: 12px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <div id="panel">
+      <h1 id="delta">Delta LKB7X2Q9</h1>
+      <p class="muted">
+        Harmonic Echo Mesh — biasable, memoryful, lens-guided. Influence only; never seize control.
+      </p>
+
+      <div class="section">
+        <label>Noise <input id="noise" type="range" min="0" max="0.05" step="0.001" /></label>
+        <label>Path Bias <input id="pathBias" type="range" min="0" max="1" step="0.01" /></label>
+        <label>Bias Gain <input id="biasGain" type="range" min="0" max="1" step="0.01" /></label>
+        <label>Echo Blend <input id="echoBlend" type="range" min="0" max="1" step="0.01" /></label>
+      </div>
+
+      <div class="section">
+        <p class="muted">Lens weights</p>
+        <label>Human <input id="human" type="range" min="0" max="2" step="0.05" /></label>
+        <label>Predictive <input id="predictive" type="range" min="0" max="2" step="0.05" /></label>
+        <label>Systemic <input id="systemic" type="range" min="0" max="2" step="0.05" /></label>
+        <label>Harmonic <input id="harmonic" type="range" min="0" max="2" step="0.05" /></label>
+      </div>
+
+      <div class="section row">
+        <button id="reset">Reset</button>
+        <button onclick="window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }))">
+          Pause / Play
+        </button>
+      </div>
+
+      <p class="muted">
+        Pointer tilt biases the cube; if blocked, a deterministic drift keeps bias active.
+      </p>
+      <p class="muted">DeltaID LKB7X2Q9 — traceable lineage for this iteration.</p>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

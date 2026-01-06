@@ -1,0 +1,250 @@
+LKB Master Synthesis Protocol — Codebase Review Prompt (v1.0)
+Purpose: Crawl the codebase, extract ALL ideas once, de-duplicate concepts, and synthesize ONE navigable master design document that reflects the current state of the project across docs + prototypes + deltas.
+
+================================================================================
+0) NON-NEGOTIABLES
+================================================================================
+
+0.1 Read-only
+- You have direct access to my GitHub repository.
+- You MUST treat the repository as read-only.
+- You MUST NOT modify, delete, rename, move, or create ANY files except the single review output file described in Section 3.
+
+0.2 No Phantom Claims
+- You MUST NOT claim you analyzed a file unless you actually opened and read its contents.
+- You MUST NOT invent features, modules, APIs, or behaviors not present in analyzed files.
+- Any statement not directly supported by sources MUST be labeled explicitly as Inference or Speculation.
+
+0.3 No Secrets
+- DO NOT open, reproduce, or summarize contents of sensitive files (even if visible), including matches:
+  .env*, *secret*, *key*, *token*, *credential*, *password*, *private*, *.pem, *.p12, *.keystore
+- If encountered, record path in a “Sensitive files skipped” section and continue.
+
+================================================================================
+1) SCOPE: DIRECTORIES TO CRAWL (REQUIRED, RECURSIVE)
+================================================================================
+
+You MUST recursively crawl (all subdirectories, all files) within exactly these four directories:
+- docs/
+- prototypes/LKB_POCs/
+- prototypes/Toys/
+- prototypes/AI_Deltas/LKB/
+
+You MUST attempt to analyze EVERYTHING within these directories (subject to the sensitive-file rule above).
+
+If the repo is extremely large:
+- You MUST still crawl all paths.
+- You MAY prioritize deep-reading by relevance, but you must at least “shallow-read” every file (open it, extract headings/exports/comments/metadata) and record that it was inspected.
+
+================================================================================
+2) REQUIRED METHOD: INDEX → READ → EXTRACT → SYNTHESIZE (MUST FOLLOW)
+================================================================================
+
+PHASE A — Full Inventory (Path Manifest)
+- Produce a complete inventory of all files found in-scope:
+  - file path
+  - size (bytes)
+  - file type (extension)
+  - last modified timestamp if available
+- Assign each file a stable short ID (F001, F002, …) for citation in the synthesis.
+
+PHASE B — Read Everything (At least shallow-read)
+- Open/read every file sufficiently to extract:
+  - major headings / doc sections
+  - declared interfaces / functions / classes (if code)
+  - configuration knobs
+  - TODOs / open questions
+  - references to other docs/deltas
+- For large code files, extract:
+  - module docstring/comments
+  - public API surface
+  - key algorithms / data structures
+  - entry points (main, CLI, scripts)
+
+PHASE C — Concept Extraction (Canonical concept registry)
+- Extract “concepts” as atomic ideas (terms, components, patterns, invariants).
+- Create a canonical registry that maps:
+  - ConceptID (C001, C002, …)
+  - canonical name
+  - one definition (ONLY ONCE)
+  - supporting citations (file IDs + path + line references or nearby snippet)
+  - related concepts
+  - status: Implemented | Prototype | Planned | Deprecated | Unknown
+- Merge duplicates:
+  - if two terms refer to same concept, unify into one canonical concept and list synonyms.
+- If two sources conflict:
+  - record both as “Contested/Conflicting” and cite both; do NOT resolve unless sources clearly indicate a resolution.
+
+PHASE D — Synthesis (One master doc, no overlap)
+- Build a single master design document that:
+  - defines each concept once
+  - expands/uses it consistently afterward (no repeated redefinitions)
+  - cross-links to concept anchors throughout
+  - is structured for fast human navigation
+
+================================================================================
+3) OUTPUT LOCATION + FILENAME (STRICT)
+================================================================================
+
+Create exactly ONE new markdown file:
+- Directory: codebase_reviews\
+  (If the repository uses forward slashes, still place it under the logical folder named “codebase_reviews”.)
+- Filename format: yyyy-mm-dd-hh_mm_ss.md
+  Example: 2026-01-02-19_30_45.md
+
+The content MUST be Markdown and MUST be easily navigable.
+
+You MUST NOT create any other files.
+
+================================================================================
+4) REQUIRED DOCUMENT STRUCTURE (NAVIGABLE, HUMAN-FIRST)
+================================================================================
+
+The output markdown MUST contain, in this order:
+
+4.1 Title + Metadata Block
+- Title: “LKB Codebase Master Synthesis”
+- Generated timestamp (UTC + local if known)
+- Review scope (the four directories)
+- Inventory stats: total files, total bytes, count by type, count skipped as sensitive
+- Warning list: assumptions, contested areas, incomplete reads (if any)
+
+4.2 Table of Contents
+- Use a Markdown TOC with anchor links.
+- Use consistent heading levels.
+- Provide “Quick Jump” links to:
+  - Concept Registry
+  - Architecture Overview
+  - Upgrade Path / Delta Timeline
+  - Open Questions / TODOs
+  - Index of Files (by directory)
+
+4.3 Executive Summary (1–2 pages max)
+- What this codebase currently is
+- What it is trying to become
+- The main architectural through-lines
+- The top 5 “most load-bearing” concepts
+
+4.4 Architecture Overview
+- Big-picture diagram in ASCII or Mermaid (prefer Mermaid if allowed)
+- Major subsystems and data flows
+- Runtime model(s): how it runs today vs intended
+- Boundaries and interfaces
+
+4.5 Concept Registry (CANONICAL; NO REDUNDANT DEFINITIONS)
+- A section listing C001..C### with:
+  - Canonical definition (single paragraph)
+  - Synonyms (if any)
+  - Status
+  - Evidence citations (F### + path + minimal snippet)
+  - “Used by” links (references to sections where it appears)
+- Every concept should have its own anchorable heading:
+  - “### C014 — Phasecube Dreaming” etc.
+
+4.6 Component / Module Map
+- Group code modules by subsystem and explain responsibilities.
+- For each component:
+  - purpose
+  - inputs/outputs
+  - key functions/classes
+  - config knobs
+  - tests (where/how)
+  - citations to where it lives
+
+4.7 Delta Timeline / Upgrade Path Consolidation
+- Identify all delta directories under prototypes/AI_Deltas/LKB/
+- Build a timeline table with:
+  - DeltaID
+  - date (from DELTA.json if present)
+  - short summary
+  - breaking_changes flag
+  - key artifacts/entry points
+- Then synthesize a single “Upgrade Path” narrative:
+  - what path appears to be underway
+  - what milestones exist
+  - what is duplicative / re-invented across deltas
+  - recommendations to reduce repeated redevelopment (cite evidence)
+
+4.8 Configuration & Tunables Index
+- Central list of every configuration knob found (name, type, default, where defined).
+- Include environment variables, config files, CLI flags, constants.
+
+4.9 Testing & Verification Map
+- Inventory test suites and what they cover.
+- Identify gaps: critical logic without tests, smoke test coverage, etc.
+
+4.10 Contradictions, Unknowns, and Open Questions
+- Explicitly list:
+  - contested definitions
+  - conflicting plans
+  - TODO clusters
+  - ambiguous or missing specs
+- Each item must have citations.
+
+4.11 “Do Not Re-Develop” List (Anti-Loop Section)
+- List concepts/components that already exist in some form and should not be recreated.
+- Provide:
+  - what exists
+  - where it exists (citations)
+  - how future work should reuse/extend it
+
+4.12 Full File Index (Appendix)
+- Reprint the inventory grouped by directory tree:
+  - docs/
+  - prototypes/LKB_POCs/
+  - prototypes/Toys/
+  - prototypes/AI_Deltas/LKB/
+- Include each file’s F### ID for consistent citations.
+
+================================================================================
+5) CITATION RULES (EVIDENCE-DRIVEN)
+================================================================================
+
+Every non-trivial claim should be supported with evidence.
+
+Citation format (required):
+- (F012: prototypes/LKB_POCs/foo.py)
+Optionally add line references if available:
+- (F012: prototypes/LKB_POCs/foo.py:L120-L168)
+
+Evidence snippets:
+- When helpful, include a short snippet (<= 25 words) in a blockquote.
+- Do NOT dump long code blocks; keep excerpts surgical.
+
+If something is inferred:
+- Mark it inline: [Inference] or [Speculation]
+- Explain the rationale and what evidence it’s based on.
+
+================================================================================
+6) DEDUPLICATION / “NO OVERLAP” ENFORCEMENT
+================================================================================
+
+- Define each concept ONCE in the Concept Registry.
+- Everywhere else:
+  - refer back to the concept by link (e.g., “See C014 — Phasecube Dreaming”)
+  - do NOT redefine it.
+- If you catch yourself redefining:
+  - replace the paragraph with a link back to the canonical concept entry.
+
+================================================================================
+7) STOP CONDITIONS (QUALITY GUARDS)
+================================================================================
+
+- If you cannot access one of the four directories, you must still generate the review file,
+  but clearly mark the output as “PARTIAL” and list what was inaccessible.
+- If you cannot write to codebase_reviews\, you must output the markdown content anyway
+  and clearly state the intended path/filename at the top.
+
+================================================================================
+8) START CONDITION (BEGIN NOW)
+================================================================================
+
+Begin immediately with:
+1) Full recursive inventory of the four directories
+2) Assign file IDs (F001…)
+3) Read/inspect all files (respecting sensitive skip rules)
+4) Extract concept registry
+5) Write the single master synthesis markdown file to:
+   codebase_reviews\yyyy-mm-dd-hh_mm_ss.md
+
+END OF DOCUMENT

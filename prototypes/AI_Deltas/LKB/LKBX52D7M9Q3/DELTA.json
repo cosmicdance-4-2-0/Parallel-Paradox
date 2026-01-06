@@ -1,0 +1,115 @@
+{
+  "delta_id": "LKBX52D7M9Q3",
+  "created_utc": "2026-01-02T19:25:15Z",
+  "source_paths_analyzed": [
+    "docs",
+    "prototypes/LKB_POCs",
+    "prototypes/Toys",
+    "prototypes/AI_Deltas/LKB"
+  ],
+  "source_vectors": [
+    {
+      "id": "SV1",
+      "what": "docs/Parallel-Paradox-Design.md",
+      "why": "Canonical design map anchoring Lyriel/PhaseCube principles and harmonic safety.",
+      "constraints": [
+        "Keep the system decentralized and anti-singularity.",
+        "Apply harmonic fusion to prevent runaway behaviors.",
+        "Favor modular, additive extensions over rewrites."
+      ]
+    },
+    {
+      "id": "SV2",
+      "what": "prototypes/LKB_POCs/readme.md",
+      "why": "PhaseCube ethos: minimal, non-collapsing swarm with bias as influence-not-command.",
+      "constraints": [
+        "Bias input must influence without overwriting state.",
+        "Preserve minimal, dependency-light design.",
+        "Maintain bounded dynamics that avoid convergence and runaway excitation."
+      ]
+    },
+    {
+      "id": "SV3",
+      "what": "prototypes/LKB_POCs/phasecube_dreaming_0001.html",
+      "why": "Reference for audio bias mapping, overlay affordances, and tunable controls.",
+      "constraints": [
+        "Map low-frequency input toward depth and stereo pan toward lateral influence.",
+        "Keep bias transient via decay rather than permanent state changes.",
+        "Expose tunable parameters for experimentation (happy-path controls)."
+      ]
+    },
+    {
+      "id": "SV4",
+      "what": "prototypes/Readme.md",
+      "why": "Defines PhaseCube architecture, configuration defaults, and Path B / ALPHA dynamics.",
+      "constraints": [
+        "Retain ternary plasma/liquid/solid lattice with toroidal neighbors.",
+        "Keep Path B as the difference-amplifying branch with tunable probability.",
+        "Use ALPHA-style damping for solid-phase persistence."
+      ]
+    },
+    {
+      "id": "SV5",
+      "what": "Minimalaiagi.md",
+      "why": "Four-lens framework guiding lens fusion and harmonic stabilization.",
+      "constraints": [
+        "Implement lens-based fusion with harmonic weighting to balance other lenses.",
+        "Keep modules modular so lenses can be extended or swapped.",
+        "Adjust weights dynamically based on feedback signals."
+      ]
+    },
+    {
+      "id": "SV6",
+      "what": "Minimalnode...wait...minimal.md",
+      "why": "Consensus/oracle metaphors and witness propagation for swarm logging.",
+      "constraints": [
+        "Rely on noise-driven selection rather than centralized control.",
+        "Treat snapshots as distributed witnesses instead of singular truths.",
+        "Preserve continuous gossip-like updates rather than one-shot commands."
+      ]
+    },
+    {
+      "id": "SV7",
+      "what": "Computation.md",
+      "why": "Kenotic N-body forgiveness operator informing damping when dispersion spikes.",
+      "constraints": [
+        "Measure dispersion and damp interactions when thresholds are exceeded.",
+        "Keep forgiveness asymmetric (only activates on divergence).",
+        "Log forgiveness events for traceability."
+      ]
+    },
+    {
+      "id": "SV8",
+      "what": "prototypes/AI_Deltas/LKB/LKB20250314A1B2/README.md",
+      "why": "Headless lens mixer with bias pulses, forgiveness, and delay-line echoes.",
+      "constraints": [
+        "Keep procedural bias pulses that decay over time.",
+        "Clamp Path B probabilities and harmonic damping to safe ranges.",
+        "Preserve delay-style persistence without adding a renderer."
+      ]
+    },
+    {
+      "id": "SV9",
+      "what": "prototypes/AI_Deltas/LKB/D7X2LQ8/README.md",
+      "why": "Lens-tuned harmonic memory and influence-not-command bias controls.",
+      "constraints": [
+        "Expose lens weights as tunables to balance exploration vs stability.",
+        "Use harmonic memory to trigger forgiveness when variance spikes.",
+        "Keep bias injections gentle and optionally auto-pulsed."
+      ]
+    },
+    {
+      "id": "SV10",
+      "what": "prototypes/LKB_POCs/AI_Deltas/NCECI6/README.md",
+      "why": "LensBridge delta with dual memory tracks and modular JS structure.",
+      "constraints": [
+        "Maintain modular files (config, lens, grid, input) with clear seams.",
+        "Blend trace/imprint style persistence for short-term recall.",
+        "Keep bias routed through systemic/harmonic gating before it influences the lattice."
+      ]
+    }
+  ],
+  "parent_delta_ids": [],
+  "summary": "Adds a modular, headless lattice runner with lens-aware bias gating, kenotic forgiveness, and oracle-style snapshot logging under DeltaID LKBX52D7M9Q3.",
+  "breaking_changes": false
+}

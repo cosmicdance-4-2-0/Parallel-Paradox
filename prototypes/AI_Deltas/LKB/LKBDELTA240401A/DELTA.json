@@ -1,0 +1,115 @@
+{
+  "delta_id": "LKBDELTA240401A",
+  "created_utc": "2026-01-02T19:24:55Z",
+  "source_paths_analyzed": [
+    "docs/",
+    "prototypes/LKB_POCs/",
+    "prototypes/Toys/",
+    "prototypes/AI_Deltas/LKB/"
+  ],
+  "source_vectors": [
+    {
+      "id": "SV1",
+      "path": "docs/Parallel-Paradox-Design.md",
+      "why_it_matters": "Canonical design map grounding anti-singularity stance and harmonic, decentralized agent framing.",
+      "constraints": [
+        "Keep systems decentralized and bounded; avoid singularity-style control.",
+        "Honor four-lens framing as a stabilizing scaffold rather than goal engine.",
+        "Prioritize interpretability and mutual-aid behaviors over optimization."
+      ]
+    },
+    {
+      "id": "SV2",
+      "path": "prototypes/LKB_POCs/readme.md",
+      "why_it_matters": "Base PhaseCube ethos and constraints for dreaming swarms and influence-not-command inputs.",
+      "constraints": [
+        "Preserve plasma/liquid/solid ternary lattice and non-collapsing dynamics.",
+        "Keep inputs as bias/influence only; never override state directly.",
+        "Maintain minimal, single-file spirit and bounded randomness to avoid attractors."
+      ]
+    },
+    {
+      "id": "SV3",
+      "path": "prototypes/LKB_POCs/phasecube_dreaming_0001.html",
+      "why_it_matters": "Reference implementation of the dreaming swarm with audio bias, HUD panels, and tunable config.",
+      "constraints": [
+        "Expose tunables for flip/parity/path blending and visualization thresholds.",
+        "Retain audio bias concepts with decay/radius knobs for influence-only shaping.",
+        "Keep renderer/state separation to allow future overlays and stats."
+      ]
+    },
+    {
+      "id": "SV4",
+      "path": "prototypes/Readme.md",
+      "why_it_matters": "System architecture and parameter rationale for PhaseCube’s 4096-agent lattice and rendering loop.",
+      "constraints": [
+        "Use grid-centered coordinate systems and toroidal neighbor sampling.",
+        "Balance Path A (averaging) vs Path B (difference amplification) with configurable probabilities.",
+        "Blend solid state with damping (ALPHA) to stabilize patterns."
+      ]
+    },
+    {
+      "id": "SV5",
+      "path": "Minimalaiagi.md",
+      "why_it_matters": "Four-lens architecture guidance for harmonic fusion and adaptive weighting.",
+      "constraints": [
+        "Keep lens fusion modular so weights can adjust dynamically.",
+        "Design perception → lens eval → decision fusion → action flow.",
+        "Use harmonic lens as stabilizer to prevent runaway dynamics."
+      ]
+    },
+    {
+      "id": "SV6",
+      "path": "Minimalnode...wait...minimal.md",
+      "why_it_matters": "Swarm/consensus framing and oracle/witness mechanics, emphasizing noise-driven selection.",
+      "constraints": [
+        "Leverage stochasticity and local randomness as safety and selection tools.",
+        "Preserve distributed, gossip-like propagation rather than centralized control.",
+        "Allow hooks for oracle-like metrics without hard-coded leaders."
+      ]
+    },
+    {
+      "id": "SV7",
+      "path": "prototypes/LKB_POCs/98E66S/README.md",
+      "why_it_matters": "Modular PhaseCube delta introducing forgiveness damping, bias radius/decay, and upgrade hooks.",
+      "constraints": [
+        "Include forgiveness damping to lower energy spikes.",
+        "Keep bias fields configurable (strength/radius/decay) and influence-only.",
+        "Leave TODO markers for multi-grid and lens fusion expansion."
+      ]
+    },
+    {
+      "id": "SV8",
+      "path": "prototypes/Toys/lkb_agi_0001.html",
+      "why_it_matters": "Clean minimal rewrite of PhaseCube with small canvas controls and toroidal lattice logic.",
+      "constraints": [
+        "Maintain lightweight controls (pause/snapshot) and simple rotation handling.",
+        "Use parity flips and plasma toggles as the primary noise sources.",
+        "Keep implementation concise and inspectable without heavy dependencies."
+      ]
+    },
+    {
+      "id": "SV9",
+      "path": "prototypes/AI_Deltas/LKB/LKBX24M9Q7P1/README.md",
+      "why_it_matters": "Recent delta with lens-aware tri-grid orchestration, bias/delay modules, and CLI demo patterns.",
+      "constraints": [
+        "Keep config-first tunables with CLI demo entrypoint.",
+        "Preserve influence-only biasing and forgiveness safeguards.",
+        "Expose hooks for future audio/WebGL without implementing them now."
+      ]
+    },
+    {
+      "id": "SV10",
+      "path": "Computation.md",
+      "why_it_matters": "Kenotic N-body forgiveness operator example reinforcing damping during dispersion.",
+      "constraints": [
+        "Apply forgiveness when dispersion/variance exceeds threshold.",
+        "Track events where damping triggers for interpretability.",
+        "Avoid singularities by clamping and thresholding interactions."
+      ]
+    }
+  ],
+  "parent_delta_ids": [],
+  "summary": "Introduces a modular, node-friendly PhaseCube-inspired lattice with configurable bias fields, forgiveness damping, and lens-ready hooks. Provides CLI demo, pinned test tooling, and coverage for lattice safety and bias decay while keeping the influence-not-command ethos.",
+  "breaking_changes": false
+}
