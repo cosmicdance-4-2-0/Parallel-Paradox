@@ -1,48 +1,52 @@
+<!--
+File: index.html
+Purpose: Main entry point — semantic HTML shell + UI markup + canvas/DOM targets + links to CSS/JS modules.
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <!-- TODO: Charset declared early, for predictable parsing across all environments -->
+  <!-- Charset declared early, for predictable parsing across all environments -->
   <meta charset="UTF-8" />
 
-  <!-- TODO: Viewport policy, for responsive behavior on all devices including embedded WebViews -->
+  <!-- Viewport policy, for responsive behavior on all devices including embedded WebViews -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
-  <!-- TODO: Describe application purpose, for SEO, sharing, and future indexing -->
+  <!-- Describe application purpose, for SEO, sharing, and future indexing -->
   <meta name="description" content="Stereo audio-reactive sphere spirals visualizer with mic/file input, recording, and screenshot capture." />
 
-  <!-- TODO: Define relevant keywords, for SEO or internal search tooling -->
+  <!-- Define relevant keywords, for SEO or internal search tooling -->
   <meta name="keywords" content="audio visualizer, web audio, canvas, generative art, stereo, microphone, recorder" />
 
-  <!-- TODO: Author metadata, for attribution and long-term stewardship -->
+  <!-- Author metadata, for attribution and long-term stewardship -->
   <meta name="author" content="Christopher 'Kisuul' Lohman" />
 
-  <!-- TODO: Optional: Helps mobile browsers style UI elements consistently -->
+  <!-- Optional: Helps browsers style built-in UI appropriately -->
   <meta name="color-scheme" content="dark light" />
 
-  <!-- TODO: Optional: Theme color for mobile address bar / PWA shells -->
+  <!-- Optional: Theme color for mobile address bar / PWA shells -->
   <meta name="theme-color" content="#000000" />
 
-  <!-- TODO: Application title, for browser tabs, OS-level UI, and PWA manifests -->
+  <!-- Application title, for browser tabs, OS-level UI, and PWA manifests -->
   <title>Kisuul Stereo Sphere Spirals — Expressive Center</title>
 
-  <!-- TODO: Externalized CSS for clean separation (themeable, maintainable) -->
+  <!-- All styles -->
   <link rel="stylesheet" href="./css/main.css" />
 </head>
 
 <body>
-  <!-- TODO: Root application container, single mount point for everything -->
+  <!-- Root application container (single mount point) -->
   <div id="app">
 
-    <!-- TODO: Application header (control bar). Keep semantic; keep IDs stable. -->
-    <header id="bar" aria-label="Controls">
+    <!-- Header control bar (minimal UI) -->
+    <header id="bar" role="banner" aria-label="Controls">
       <button id="btnMic" type="button">Enable Mic</button>
 
-      <label for="file" class="btnLike" role="button" tabindex="0">Use Audio File</label>
+      <label for="file" role="button" aria-label="Choose audio file">Use Audio File</label>
       <input id="file" type="file" accept="audio/*" />
 
       <button id="btnStopAudio" type="button" disabled>Stop Audio</button>
 
-      <span class="pill" aria-label="Scene name">Scene: Stereo Spirals + Expressive Center</span>
+      <span class="pill" aria-label="Scene label">Scene: Stereo Spirals + Expressive Center</span>
 
       <button id="btnRec" type="button">Start Rec</button>
       <button id="btnShot" type="button">Screenshot</button>
@@ -50,12 +54,12 @@
       <span id="status" aria-live="polite">idle (demo features)</span>
     </header>
 
-    <!-- TODO: Main content region (canvas + overlay). -->
-    <main aria-label="Visualizer">
-      <!-- TODO: Canvas surface. tabindex lets it receive keyboard focus if needed. -->
-      <canvas id="render-target" tabindex="0"></canvas>
+    <!-- Main content region -->
+    <main role="main">
+      <!-- Canvas render surface -->
+      <canvas id="render-target"></canvas>
 
-      <!-- TODO: DOM overlay surface: HUD, debug panels, accessibility hooks. -->
+      <!-- DOM overlay surface (HUD, debug, accessible UI overlays) -->
       <div id="dom-target" aria-hidden="true">
         <div id="panel"></div>
       </div>
@@ -67,13 +71,13 @@
       </noscript>
     </main>
 
-    <!-- TODO: Footer reserved for build/version/credits (lightweight). -->
-    <footer>
-      <p>Christopher 'Kisuul' Lohman — TODO: Version — TODO: Build Date</p>
+    <!-- Footer (traceability / versioning) -->
+    <footer role="contentinfo">
+      <p>Christopher 'Kisuul' Lohman — Version 2.0 — Jan 05, 2026</p>
     </footer>
   </div>
 
-  <!-- TODO: Main orchestration module (imports config/classes, wires UI, runs loop). -->
+  <!-- Main JS entry (ES modules) -->
   <script type="module" src="./js/main.js"></script>
 </body>
 </html>
