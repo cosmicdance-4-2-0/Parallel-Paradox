@@ -1,0 +1,2007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="description" content="Stereo audio-reactive generative art visualizer (mic or audio file) — single-file, offline-capable." />
+  <meta name="keywords" content="audio visualizer, generative art, web audio, canvas, single file" />
+  <meta name="author" content="Christopher 'Kisuul' Lohman" />
+  <title>Stereo Audio-Reactive Visualizer v2.3.5</title>
+
+  <style>
+    /* ===== Minimal, readable UI ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: system-ui, sans-serif; background: #000; color: #fff; }
+    #app { display: grid; grid-template-rows: auto 1fr auto; height: 100%; }
+    header, footer { padding: 1rem; text-align: center; }
+    main { overflow: hidden; position: relative; }
+    #render-target {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none; /* allow custom gestures without browser scrolling/zooming */
+      cursor: grab;
+    }
+    #render-target.dragging { cursor: grabbing; }
+
+    /* ===== Overlay (onboarding / permissions) ===== */
+    #dom-target {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      background: radial-gradient(circle at center, rgba(0,0,0,0.55), rgba(0,0,0,0.85));
+      padding: 2rem;
+      transition: opacity 0.35s ease;
+      pointer-events: auto;
+      opacity: 1;
+    }
+    #panel {
+      max-width: 760px;
+      width: min(760px, 92vw);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 1.25rem;
+      background: rgba(0,0,0,0.55);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    #panel h2 { font-size: 1.25rem; margin-bottom: 0.6rem; }
+    #panel p { line-height: 1.35; opacity: 0.95; }
+    #panel .small { opacity: 0.8; font-size: 0.92rem; margin-top: 0.6rem; }
+    #row { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-top: 0.9rem; }
+    button, .filelike, select {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 10px;
+      padding: 0.65rem 0.85rem;
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 650;
+      letter-spacing: 0.2px;
+    }
+    button:hover, .filelike:hover, select:hover { background: rgba(255,255,255,0.10); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    input[type="file"] { display: none; }
+
+    #status {
+      margin-top: 0.8rem;
+      padding: 0.75rem;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.35);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.92rem;
+      white-space: pre-wrap;
+    }
+
+    /* ===== Optional audio element (file mode controls) ===== */
+    #player {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 1rem;
+      width: min(760px, 92vw);
+      opacity: 0.92;
+      display: none;
+      pointer-events: auto;
+      z-index: 5;
+    }
+
+    /* ===== Controls panel (always available) ===== */
+    #controls {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: min(380px, 92vw);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 12px;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(8px);
+      padding: .55rem .7rem;
+      pointer-events: auto;
+      z-index: 6;
+    }
+    #controls summary { cursor: pointer; font-weight: 750; user-select: none; }
+    .ctl-grid { display: grid; gap: .55rem; margin-top: .65rem; }
+    .ctl {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: .5rem;
+      align-items: center;
+      font-size: .92rem;
+      opacity: .95;
+    }
+    .ctl input[type="range"] { grid-column: 1 / -1; width: 100%; }
+    .ctl output {
+      opacity: .85;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: .9rem;
+    }
+    .ctl small { grid-column: 1 / -1; opacity: .75; font-size: .82rem; line-height: 1.2; }
+    .ctl-row { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.2rem; }
+    .ctl-row button { padding: .45rem .65rem; border-radius: 10px; font-weight: 650; }
+    .ctl select { grid-column: 1 / -1; padding: .55rem .65rem; }
+
+    .section {
+      border-top: 1px solid rgba(255,255,255,0.10);
+      margin-top: .6rem;
+      padding-top: .6rem;
+    }
+    .section-title {
+      font-weight: 750;
+      opacity: 0.92;
+      font-size: .92rem;
+      margin-bottom: .1rem;
+    }
+
+    /* ===== FPS counter (debug mode) ===== */
+    #fps {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      padding: .5rem .7rem;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.7);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: .85rem;
+      opacity: 0.85;
+      pointer-events: none;
+      z-index: 7;
+      display: none;
+    }
+
+    /* ===== Keyboard help overlay ===== */
+    #help {
+      position: absolute;
+      bottom: 1rem;
+      left: 1rem;
+      max-width: min(360px, 92vw);
+      padding: .7rem .85rem;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.75);
+      border: 1px solid rgba(255,255,255,0.14);
+      font-size: .85rem;
+      line-height: 1.55;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      z-index: 8;
+    }
+    #help.show { opacity: 0.92; }
+    #help strong { color: #4af; font-weight: 650; }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <header>
+      <h1>Stereo Audio Reactive Visualizer</h1>
+    </header>
+
+    <main>
+      <canvas id="render-target"></canvas>
+
+      <div id="fps">FPS: --</div>
+
+      <div id="help">
+        <strong>SPACE</strong> pause visuals • <strong>F</strong> fullscreen • <strong>R</strong> reset<br>
+        <strong>D</strong> debug • <strong>S</strong> share • <strong>?</strong> help<br>
+        <strong>J/L</strong> yaw • <strong>I/K</strong> pitch • <strong>-/=</strong> zoom • <strong>0</strong> cam reset
+      </div>
+
+      <details id="controls" open>
+        <summary>⚙ Controls</summary>
+        <div class="ctl-grid">
+          <div class="ctl">
+            <label for="ctl-mood">Mood</label>
+            <output id="ctl-mood-v"></output>
+            <select id="ctl-mood"></select>
+            <small>Rendering preset (colors + band behavior). Master orb stays “mono/sum”.</small>
+          </div>
+
+          <div class="ctl">
+            <label for="ctl-gesture">Touch Mode</label>
+            <output id="ctl-gesture-v"></output>
+            <select id="ctl-gesture">
+              <option value="visual">Visual</option>
+              <option value="camera">Camera</option>
+            </select>
+            <small><b>Visual</b>: swipe tweaks render params. <b>Camera</b>: drag rotates, pinch zooms.</small>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Orb Grammar</div>
+            <div class="ctl">
+              <label for="ctl-bands">Stereo bands</label>
+              <output id="ctl-bands-v"></output>
+              <input id="ctl-bands" type="range" min="0" max="3" step="1" value="1" />
+              <small>
+                Total orbs = <b>1 master</b> + <b>2 × bands</b> (L/R per band). Bands map to frequency regions.
+              </small>
+            </div>
+
+            <div class="ctl">
+              <label for="ctl-pmin">Particles min</label>
+              <output id="ctl-pmin-v"></output>
+              <input id="ctl-pmin" type="range" min="4" max="240" step="1" value="16" />
+            </div>
+
+            <div class="ctl">
+              <label for="ctl-pmax">Particles max</label>
+              <output id="ctl-pmax-v"></output>
+              <input id="ctl-pmax" type="range" min="8" max="360" step="1" value="72" />
+              <small>Particle count derives from BPM-ish detection, then clamps to these bounds.</small>
+            </div>
+
+            <div class="ctl">
+              <label for="ctl-trail">Trail</label>
+              <output id="ctl-trail-v"></output>
+              <input id="ctl-trail" type="range" min="0" max="0.25" step="0.01" value="0.08" />
+              <small>0 = no trails (hard clear). Higher = longer persistence.</small>
+            </div>
+
+            <div class="ctl">
+              <label for="ctl-orbit">Orbit radius</label>
+              <output id="ctl-orbit-v"></output>
+              <input id="ctl-orbit" type="range" min="40" max="520" step="1" value="170" />
+              <small>Base distance for sub-orbs (energy adds extra radius).</small>
+            </div>
+
+            <div class="ctl">
+              <label for="ctl-orbitE">Orbit energy</label>
+              <output id="ctl-orbitE-v"></output>
+              <input id="ctl-orbitE" type="range" min="0" max="620" step="1" value="260" />
+              <small>How much band energy pushes sub-orbs outward.</small>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Camera</div>
+
+            <div class="ctl">
+              <label for="ctl-zoom">Zoom</label>
+              <output id="ctl-zoom-v"></output>
+              <input id="ctl-zoom" type="range" min="0.35" max="3.00" step="0.01" value="1.00" />
+            </div>
+
+            <div class="ctl">
+              <label for="ctl-rotx">Rotate X</label>
+              <output id="ctl-rotx-v"></output>
+              <input id="ctl-rotx" type="range" min="-69" max="69" step="1" value="0" />
+              <small>Pitch (tilt). Drag up/down in Camera touch mode.</small>
+            </div>
+
+            <div class="ctl">
+              <label for="ctl-roty">Rotate Y</label>
+              <output id="ctl-roty-v"></output>
+              <input id="ctl-roty" type="range" min="-180" max="180" step="1" value="0" />
+              <small>Yaw (turn). Drag left/right in Camera touch mode.</small>
+            </div>
+
+            <div class="ctl-row">
+              <button id="btn-camreset" type="button">Reset Camera</button>
+            </div>
+          </div>
+
+          <div class="ctl-row">
+            <button id="btn-stop" type="button">Stop Audio</button>
+            <button id="btn-overlay" type="button">Show Overlay</button>
+            <button id="btn-share" type="button">Share Settings</button>
+          </div>
+        </div>
+      </details>
+
+      <div id="dom-target">
+        <div id="panel">
+          <h2>Enable Audio Reactivity</h2>
+          <p>
+            Microphone mode <b>cannot</b> work on <code>file://</code> due to browser security rules.
+            Audio File mode <b>does</b> work offline and stays single-file portable.
+          </p>
+
+          <div id="row">
+            <button id="btn-mic" type="button">Enable Microphone</button>
+            <label class="filelike" for="file-input">Use Audio File</label>
+            <input id="file-input" type="file" accept="audio/*" />
+            <button id="btn-hide" type="button">Hide Overlay</button>
+          </div>
+
+          <div class="small">
+            Headphones recommended. On desktop: serving from <b>http://localhost</b> counts as "secure enough" for mic.
+            Press <b>?</b> for keyboard shortcuts.
+          </div>
+
+          <div id="status">Status: idle (rendering demo mode)</div>
+        </div>
+      </div>
+
+      <audio id="player" controls></audio>
+    </main>
+
+    <footer>
+      <p>&copy; Christopher "Kisuul" Lohman — Stereo Visualizer v2.3.5</p>
+    </footer>
+  </div>
+
+  <script type="module">
+  (() => {
+    /* =====================================================================
+      PRIME DIRECTIVE (for this file)
+      - Single-file, offline-capable: no CDN, no build step, no imports.
+      - No magic numbers: tunables live in DEFAULTS/PARAMS.
+      - State is centralized and explicit.
+      - UI bindings are bi-directional:
+          UI -> PARAMS (on input)
+          PARAMS -> UI (on preset load, reset, gestures, camera drag/zoom)
+      - Orb grammar:
+          1 master orb at center = mono/sum (total spectrum)
+          N stereo bands = 2 orbs per band (Left + Right)
+      - TODO(v2.4): import external preset/mood packs (file / paste / URL)
+      - TODO(v2.5): in-app preset editor (user-authored moods + behaviors)
+    ====================================================================== */
+
+    // ===== Math aliases =====
+    const S = Math.sin;
+    const C = Math.cos;
+    const TAU = Math.PI * 2;
+
+    /* =====================================================================
+      1) DEFAULTS (single source of truth)
+    ====================================================================== */
+    const DEFAULTS = {
+      ui: {
+        overlayFadeMs: 350,
+        overlayTransitionMs: 350,
+        statusPrefix: "Status: ",
+        helpDisplayMs: 3200,
+        helpFirstShowDelayMs: 1000,
+        helpShownStorageKey: "visualizer-help-shown",
+      },
+
+      canvas: {
+        context: {
+          alpha: false,
+          desynchronized: true,
+        },
+        backgroundColor: "#000000",
+        trailAlpha: 0.08,
+        compositeDraw: "source-over",
+        compositeFX: "lighter",
+      },
+
+      time: {
+        dtClampSeconds: 0.05,
+      },
+
+      audio: {
+        gainToDestination: 0.90,
+        analyser: {
+          masterFFTSize: 1024,
+          sideFFTSize: 512,
+        },
+        // Normalized [0..1] ranges of analyser bins (roughly logarithmic in perception; not exact).
+        spectrum: {
+          // Master orb uses this full-range window.
+          masterRange: { start: 0.00, end: 0.98 },
+          // Stereo bands: three regions for interpretability.
+          bands: [
+            { id: "band1", label: "Low",  start: 0.00, end: 0.12 },
+            { id: "band2", label: "Mid",  start: 0.12, end: 0.38 },
+            { id: "band3", label: "High", start: 0.38, end: 0.98 },
+          ],
+        },
+        energySmoothing: 0.88,
+        errorRecovery: {
+          maxErrorsInWindow: 3,
+          errorWindowMs: 5000,
+        },
+      },
+
+      bpm: {
+        historySize: 180,
+        peakFactor: 1.40,
+        refractoryMs: 280,
+        minBpm: 20,
+        maxBpm: 600,
+        emaAlpha: 0.10,
+
+        // Idle demo BPM
+        idleBase: 120,
+        idleAmp: 25,
+        idleRate: 0.35,
+
+        // Which stereo band (index) drives BPM-ish detection (low band is most beat-relevant)
+        bandIndexForBpm: 0,
+      },
+
+      particles: {
+        bpmDivisor: 3,
+        min: 16,
+        max: 72,
+      },
+
+      orbs: {
+        stereoBands: 1,         // 0..3 (UI)
+        maxBands: 3,
+        master: {
+          particleMultiplier: 1.35,
+          scaleMultiplier: 1.25,     // larger field
+          sizeMultiplier: 1.15,      // larger particles
+        },
+        sub: {
+          scaleMultiplier: 0.82,
+          sizeMultiplier: 0.70,
+        },
+        orbit: {
+          baseRadius: 170,
+          energyRadius: 260,
+          bandSpacing: 44,          // pushes outer bands further even at equal energy
+          phaseRate: 0.35,
+          hemisphereWobbleRad: 0.55, // keeps L on left-ish, R on right-ish while still moving
+          yPhaseMultiplier: 1.12,
+          yScale: 0.62,
+        },
+      },
+
+      draw: {
+        baseScale: 420,
+        energyScale: 220,
+
+        sizeBase: 9,
+        sizeEnergy: 26,
+
+        zBias: 0.20,
+        depthScale: 0.80,
+        depthBias: 1.80,
+        depthMin: 0.15,
+
+        spiral: {
+          timeBase: 0.75,
+          timeEnergy: 3.00,
+          perParticlePhase: 0.60,
+          ampBase: 2.00,
+          ampEnergy: 2.20,
+        },
+
+        aRateBase: 1.10,
+        aRateEnergy: 1.00,
+        bRate: 0.35,
+        bBase: 1.30,
+        bEnergy: 0.80,
+
+        color: {
+          alpha: 0.92,
+          hueTimeRate: 12,       // for rainbow mode
+        },
+      },
+
+      idleEnergy: {
+        full:  { base: 0.14, a1: 0.09, f1: 0.90, a2: 0.05, f2: 2.20 },
+        left:  { base: 0.12, a1: 0.07, f1: 1.10, phase:  1.30 },
+        right: { base: 0.12, a1: 0.07, f1: 1.05, phase: -0.70 },
+      },
+
+      performance: {
+        fpsUpdateIntervalMs: 500,
+        fpsSampleSize: 60,
+      },
+
+      touch: {
+        mode: "visual",         // "visual" | "camera"
+        swipeThresholdPx: 50,
+        pinchThresholdPx: 20,
+
+        // Visual-mode gestures
+        trailPerPixel: 1 / 500,
+        orbitPerPixel: 0.5,
+        pinchBandStep: 1,
+
+        // Camera-mode gestures
+        rotatePerPixel: 1 / 420,
+        pinchZoomPerPixel: 1 / 350,
+      },
+
+      camera: {
+        zoom: 1.0,
+        zoomMin: 0.35,
+        zoomMax: 3.00,
+
+        // radians
+        rotX: 0.00,
+        rotY: 0.00,
+        rotXMin: -1.20,   // ~ -69°
+        rotXMax:  1.20,   // ~ +69°
+        // rotY can wrap; UI clamps to [-180..180] but internal can wrap safely
+        smoothing: 0.0,
+
+        mouseRotatePerPixel: 1 / 450,
+        wheelZoomPerDelta:  1 / 900,
+      },
+
+      share: {
+        hashPrefix: "preset=",
+        useBase64Url: true,
+      },
+
+      keyboard: {
+        pauseFreezesVisualOnly: true,
+        camRotateStepRad: 0.06,
+        camZoomStep: 0.06,
+      },
+
+      // Mood presets
+      moods: {
+        rainbow_disco: {
+          label: "Rainbow Disco",
+          master: { mode: "rainbow" },
+          bands: [
+            { mode: "rainbow" },
+            { mode: "rainbow" },
+            { mode: "rainbow" },
+          ],
+        },
+
+        instrument_disco: {
+          label: "Instrument Disco",
+          // Master stays as-is (rainbow) per spec.
+          master: { mode: "rainbow" },
+          bands: [
+            // Band 1: inverse of green→magenta (interpreted as magenta→green)
+            { mode: "gradient", from: [255,  0, 255], to: [  0, 255,   0] },
+            // Band 2: yellow→blue
+            { mode: "gradient", from: [255, 255,   0], to: [  0,   0, 255] },
+            // Band 3: red→cyan
+            { mode: "gradient", from: [255,   0,   0], to: [  0, 255, 255] },
+          ],
+        },
+      },
+
+      mood: {
+        current: "rainbow_disco",
+      },
+    };
+
+    // Deep copy defaults into runtime parameters
+    const PARAMS = JSON.parse(JSON.stringify(DEFAULTS));
+
+    /* =====================================================================
+      2) DOM / Canvas
+    ====================================================================== */
+    const canvas  = document.getElementById("render-target");
+    const ctx     = canvas.getContext("2d", PARAMS.canvas.context);
+    const mainEl  = document.querySelector("main");
+
+    const overlay  = document.getElementById("dom-target");
+    const statusEl = document.getElementById("status");
+    const btnMic   = document.getElementById("btn-mic");
+    const btnHide  = document.getElementById("btn-hide");
+    const fileInput= document.getElementById("file-input");
+    const player   = document.getElementById("player");
+
+    const btnStop   = document.getElementById("btn-stop");
+    const btnOverlay= document.getElementById("btn-overlay");
+    const btnShare  = document.getElementById("btn-share");
+
+    const fpsEl  = document.getElementById("fps");
+    const helpEl = document.getElementById("help");
+
+    const btnCamReset = document.getElementById("btn-camreset");
+
+    /* =====================================================================
+      3) State (all mutable runtime state)
+    ====================================================================== */
+    const state = {
+      // Canvas size in CSS pixels
+      vw: 0, vh: 0, dpr: 1, backgroundDrawn: false,
+
+      // Time
+      time: 0,
+      lastNow: performance.now(),
+      paused: false,
+
+      // Audio
+      audioCtx: null,
+      mode: "idle", // "idle" | "mic" | "file"
+
+      mic: { stream: null, source: null },
+
+      file: {
+        objectUrl: null,
+        mediaSource: null, // created ONCE per <audio> element
+      },
+
+      graph: {
+        source: null,
+        splitter: null,
+        masterAnalyser: null,
+        leftAnalyser: null,
+        rightAnalyser: null,
+        gain: null,
+      },
+
+      masterData: null,
+      leftData: null,
+      rightData: null,
+
+      // Smoothed energies
+      masterEnergy: 0,
+      bands: [
+        { l: 0, r: 0, m: 0 },
+        { l: 0, r: 0, m: 0 },
+        { l: 0, r: 0, m: 0 },
+      ],
+
+      // BPM-ish detector state
+      energyHistory: [],
+      energySum: 0,
+      lastPeakTimeMs: 0,
+      bpm: DEFAULTS.bpm.idleBase,
+
+      // Error recovery
+      errorLog: [], // { t, msg }
+
+      // Debug/FPS
+      debug: false,
+      fpsFrames: [],
+      lastFpsUpdate: 0,
+
+      // Touch gesture state
+      touch: {
+        active: false,
+        startX: 0,
+        startY: 0,
+        lastX: 0,
+        lastY: 0,
+
+        startDistance: 0,
+        lastDistance: 0,
+
+        startMidX: 0,
+        startMidY: 0,
+        lastMidX: 0,
+        lastMidY: 0,
+      },
+
+      // Mouse drag camera
+      mouse: {
+        dragging: false,
+        startX: 0,
+        startY: 0,
+      },
+
+      // Camera smoothing (optional)
+      cam: {
+        zoom: PARAMS.camera.zoom,
+        rotX: PARAMS.camera.rotX,
+        rotY: PARAMS.camera.rotY,
+      },
+    };
+
+    /* =====================================================================
+      4) Utilities
+    ====================================================================== */
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    function setStatus(msg) {
+      statusEl.textContent = `${PARAMS.ui.statusPrefix}${msg}`;
+    }
+
+    function hideOverlay() {
+      overlay.style.opacity = "0";
+      window.setTimeout(() => { overlay.style.display = "none"; }, PARAMS.ui.overlayFadeMs);
+    }
+
+    function showOverlay() {
+      overlay.style.display = "grid";
+      overlay.getBoundingClientRect(); // flush for transition correctness
+      overlay.style.opacity = "1";
+    }
+
+    function showHelp() {
+      helpEl.classList.add("show");
+      window.setTimeout(() => { helpEl.classList.remove("show"); }, PARAMS.ui.helpDisplayMs);
+    }
+
+    function averageNormalizedRange(bytes, startBin, endBin) {
+      const a = clamp(startBin | 0, 0, bytes.length);
+      const b = clamp(endBin | 0, 0, bytes.length);
+      const lo = Math.min(a, b);
+      const hi = Math.max(a, b);
+      let sum = 0;
+      for (let i = lo; i < hi; i++) sum += bytes[i];
+      const n = Math.max(1, hi - lo);
+      return sum / (n * 255);
+    }
+
+    function binsFromNormRange(binCount, startNorm, endNorm) {
+      const s = clamp(startNorm, 0, 1);
+      const e = clamp(endNorm, 0, 1);
+      return {
+        start: Math.floor(s * binCount),
+        end: Math.floor(e * binCount),
+      };
+    }
+
+    /* ===== URL-safe base64 helpers (for preset sharing) ===== */
+    function base64UrlEncode(str) {
+      const b64 = btoa(str);
+      return b64.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+    }
+    function base64UrlDecode(b64url) {
+      const b64 = b64url.replaceAll("-", "+").replaceAll("_", "/");
+      const padLen = (4 - (b64.length % 4)) % 4;
+      const padded = b64 + "=".repeat(padLen);
+      return atob(padded);
+    }
+
+    /* =====================================================================
+      5) Canvas sizing (match <main>)
+    ====================================================================== */
+    function resizeToMain() {
+      state.dpr = Math.max(1, window.devicePixelRatio || 1);
+      const r = mainEl.getBoundingClientRect();
+
+      state.vw = r.width;
+      state.vh = r.height;
+
+      canvas.style.width = `${state.vw}px`;
+      canvas.style.height = `${state.vh}px`;
+      canvas.width = Math.floor(state.vw * state.dpr);
+      canvas.height = Math.floor(state.vh * state.dpr);
+
+      ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+      state.backgroundDrawn = false;
+    }
+    new ResizeObserver(resizeToMain).observe(mainEl);
+    window.addEventListener("resize", resizeToMain, { passive: true });
+    resizeToMain();
+
+    /* =====================================================================
+      6) Audio context + graph
+    ====================================================================== */
+    async function ensureAudioContext() {
+      if (!state.audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) throw new Error("Web Audio is not supported in this browser.");
+        state.audioCtx = new Ctx();
+      }
+      if (state.audioCtx.state === "suspended") {
+        await state.audioCtx.resume();
+      }
+      return state.audioCtx;
+    }
+
+    function disconnectGraph() {
+      const g = state.graph;
+      try { g.source?.disconnect(); } catch {}
+      try { g.splitter?.disconnect(); } catch {}
+      try { g.masterAnalyser?.disconnect(); } catch {}
+      try { g.leftAnalyser?.disconnect(); } catch {}
+      try { g.rightAnalyser?.disconnect(); } catch {}
+      try { g.gain?.disconnect(); } catch {}
+
+      state.graph = { source: null, splitter: null, masterAnalyser: null, leftAnalyser: null, rightAnalyser: null, gain: null };
+      state.masterData = null;
+      state.leftData = null;
+      state.rightData = null;
+    }
+
+    function resetEnergyAndBpm() {
+      state.masterEnergy = 0;
+      for (const b of state.bands) { b.l = 0; b.r = 0; b.m = 0; }
+
+      state.energyHistory.length = 0;
+      state.energySum = 0;
+      state.lastPeakTimeMs = 0;
+      state.bpm = DEFAULTS.bpm.idleBase;
+    }
+
+    function buildGraph(sourceNode, audioCtx, connectToDestination) {
+      disconnectGraph();
+      resetEnergyAndBpm();
+
+      const masterAnalyser = audioCtx.createAnalyser();
+      masterAnalyser.fftSize = PARAMS.audio.analyser.masterFFTSize;
+
+      const splitter = audioCtx.createChannelSplitter(2);
+
+      const leftAnalyser = audioCtx.createAnalyser();
+      const rightAnalyser = audioCtx.createAnalyser();
+      leftAnalyser.fftSize = PARAMS.audio.analyser.sideFFTSize;
+      rightAnalyser.fftSize = PARAMS.audio.analyser.sideFFTSize;
+
+      const masterData = new Uint8Array(masterAnalyser.frequencyBinCount);
+      const leftData = new Uint8Array(leftAnalyser.frequencyBinCount);
+      const rightData = new Uint8Array(rightAnalyser.frequencyBinCount);
+
+      sourceNode.connect(masterAnalyser);
+      sourceNode.connect(splitter);
+      splitter.connect(leftAnalyser, 0);
+      splitter.connect(rightAnalyser, 1);
+
+      let gain = null;
+      if (connectToDestination) {
+        gain = audioCtx.createGain();
+        gain.gain.value = PARAMS.audio.gainToDestination;
+        sourceNode.connect(gain);
+        gain.connect(audioCtx.destination);
+      }
+
+      state.graph = { source: sourceNode, splitter, masterAnalyser, leftAnalyser, rightAnalyser, gain };
+      state.masterData = masterData;
+      state.leftData = leftData;
+      state.rightData = rightData;
+    }
+
+    /* =====================================================================
+      7) Error recovery (bounded window)
+    ====================================================================== */
+    function logError(msg) {
+      const now = performance.now();
+      state.errorLog.push({ t: now, msg });
+
+      const cfg = PARAMS.audio.errorRecovery;
+      state.errorLog = state.errorLog.filter(e => (now - e.t) < cfg.errorWindowMs);
+
+      if (state.errorLog.length >= cfg.maxErrorsInWindow) {
+        console.warn("[Auto-Recovery] Too many errors; falling back to idle.", state.errorLog);
+        setStatus("auto-recovery: too many errors → idle");
+        stopAudio();
+        state.errorLog.length = 0;
+      }
+    }
+
+    /* =====================================================================
+      8) Start/Stop modes
+    ====================================================================== */
+    function stopMicTracks() {
+      if (state.mic.stream) {
+        for (const t of state.mic.stream.getTracks()) t.stop();
+      }
+      state.mic.stream = null;
+      state.mic.source = null;
+    }
+
+    async function startMic() {
+      try {
+        if (!window.isSecureContext) {
+          throw new Error(
+            "Microphone requires a secure origin.\n" +
+            "Use https OR open via http://localhost.\n" +
+            "(file:// will never prompt for mic)."
+          );
+        }
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error("getUserMedia() is not available in this browser/context.");
+        }
+
+        setStatus("requesting microphone permission...");
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioCtx = await ensureAudioContext();
+
+        stopMicTracks();
+        const source = audioCtx.createMediaStreamSource(stream);
+        state.mic.stream = stream;
+        state.mic.source = source;
+
+        buildGraph(source, audioCtx, false);
+
+        state.mode = "mic";
+        state.errorLog.length = 0;
+        setStatus("microphone active ✅ (rendering spectrum + stereo bands)");
+        hideOverlay();
+      } catch (err) {
+        const m = err?.message || String(err);
+        setStatus("mic failed ❌\n" + m);
+        logError("mic start: " + m);
+      }
+    }
+
+    async function startFile(file) {
+      try {
+        const audioCtx = await ensureAudioContext();
+
+        if (state.file.objectUrl) URL.revokeObjectURL(state.file.objectUrl);
+        state.file.objectUrl = URL.createObjectURL(file);
+
+        player.src = state.file.objectUrl;
+        player.style.display = "block";
+
+        // Create MediaElementSource ONCE per <audio> element (robust reuse).
+        if (!state.file.mediaSource) {
+          state.file.mediaSource = audioCtx.createMediaElementSource(player);
+        }
+
+        buildGraph(state.file.mediaSource, audioCtx, true);
+
+        await player.play();
+
+        state.mode = "file";
+        state.errorLog.length = 0;
+        setStatus(`file active ✅ (${file.name}) (rendering spectrum + stereo bands)`);
+        hideOverlay();
+      } catch (err) {
+        const m = err?.message || String(err);
+        setStatus("file mode failed ❌\n" + m);
+        logError("file start: " + m);
+      }
+    }
+
+    function stopAudio() {
+      stopMicTracks();
+
+      try { player.pause(); } catch {}
+      player.style.display = "none";
+
+      if (state.file.objectUrl) {
+        URL.revokeObjectURL(state.file.objectUrl);
+        state.file.objectUrl = null;
+      }
+      player.src = "";
+
+      disconnectGraph();
+      resetEnergyAndBpm();
+
+      state.mode = "idle";
+      state.paused = false;
+      setStatus("idle (audio stopped). Demo mode running.");
+    }
+
+    function resetCamera() {
+      PARAMS.camera.zoom = DEFAULTS.camera.zoom;
+      PARAMS.camera.rotX = DEFAULTS.camera.rotX;
+      PARAMS.camera.rotY = DEFAULTS.camera.rotY;
+      state.cam.zoom = PARAMS.camera.zoom;
+      state.cam.rotX = PARAMS.camera.rotX;
+      state.cam.rotY = PARAMS.camera.rotY;
+      syncAllControlsFromParams();
+      setStatus("camera reset ✅");
+    }
+
+    function resetToDefaults() {
+      const fresh = JSON.parse(JSON.stringify(DEFAULTS));
+      for (const k of Object.keys(PARAMS)) PARAMS[k] = fresh[k];
+
+      state.backgroundDrawn = false;
+      resetEnergyAndBpm();
+      state.paused = false;
+
+      // reset smoothed cam state
+      state.cam.zoom = PARAMS.camera.zoom;
+      state.cam.rotX = PARAMS.camera.rotX;
+      state.cam.rotY = PARAMS.camera.rotY;
+
+      syncAllControlsFromParams();
+      setStatus("reset to defaults ✅");
+    }
+
+    /* =====================================================================
+      9) Audio sampling -> energies (master + 3 stereo bands)
+    ====================================================================== */
+    function idleEnergyOscillator() {
+      const t = state.time;
+      const id = PARAMS.idleEnergy;
+
+      let full  = id.full.base  + id.full.a1  * S(t * id.full.f1)  + id.full.a2  * S(t * id.full.f2);
+      let left  = id.left.base  + id.left.a1  * S(t * id.left.f1  + id.left.phase);
+      let right = id.right.base + id.right.a1 * S(t * id.right.f1 + id.right.phase);
+
+      full  = clamp(full, 0, 1);
+      left  = clamp(left, 0, 1);
+      right = clamp(right, 0, 1);
+
+      // Fabricate 3 bands from the same oscillator (still deterministic, still alive)
+      const bands = [
+        { l: left  * 0.90, r: right * 0.90, m: full * 0.95 },
+        { l: left  * 0.70, r: right * 0.70, m: full * 0.75 },
+        { l: left  * 0.55, r: right * 0.55, m: full * 0.60 },
+      ];
+
+      return { master: full, bands, isReal: false };
+    }
+
+    function sampleSpectrum() {
+      const g = state.graph;
+
+      if (g.masterAnalyser && g.leftAnalyser && g.rightAnalyser) {
+        try {
+          g.masterAnalyser.getByteFrequencyData(state.masterData);
+          g.leftAnalyser.getByteFrequencyData(state.leftData);
+          g.rightAnalyser.getByteFrequencyData(state.rightData);
+
+          const spec = PARAMS.audio.spectrum;
+
+          // Master orb = mono/sum analyser over a wide range
+          const mBins = binsFromNormRange(state.masterData.length, spec.masterRange.start, spec.masterRange.end);
+          const master = averageNormalizedRange(state.masterData, mBins.start, mBins.end);
+
+          // Stereo bands = L/R analysers over band ranges
+          const bands = spec.bands.map((b) => {
+            const lBins = binsFromNormRange(state.leftData.length, b.start, b.end);
+            const rBins = binsFromNormRange(state.rightData.length, b.start, b.end);
+            const left  = averageNormalizedRange(state.leftData,  lBins.start, lBins.end);
+            const right = averageNormalizedRange(state.rightData, rBins.start, rBins.end);
+            return { l: left, r: right, m: (left + right) * 0.5 };
+          });
+
+          return { master, bands, isReal: true };
+        } catch (err) {
+          logError("audio sampling: " + (err?.message || String(err)));
+          return idleEnergyOscillator();
+        }
+      }
+
+      return idleEnergyOscillator();
+    }
+
+    function updateSmoothedEnergies(sample) {
+      const s = PARAMS.audio.energySmoothing;
+
+      state.masterEnergy = state.masterEnergy * s + sample.master * (1 - s);
+
+      for (let i = 0; i < state.bands.length; i++) {
+        const b = state.bands[i];
+        const sb = sample.bands[i] || { l: 0, r: 0, m: 0 };
+        b.l = b.l * s + sb.l * (1 - s);
+        b.r = b.r * s + sb.r * (1 - s);
+        b.m = b.m * s + sb.m * (1 - s);
+      }
+    }
+
+    function updateBpmLikeDetector(nowMs, enabled) {
+      const cfg = PARAMS.bpm;
+
+      if (!enabled) {
+        state.bpm = cfg.idleBase + cfg.idleAmp * S(state.time * cfg.idleRate);
+        return;
+      }
+
+      // Drive BPM-ish from the low band mono (most beat-relevant)
+      const bi = clamp(cfg.bandIndexForBpm, 0, state.bands.length - 1);
+      const mono = state.bands[bi].m;
+
+      state.energyHistory.push(mono);
+      state.energySum += mono;
+
+      if (state.energyHistory.length > cfg.historySize) {
+        state.energySum -= state.energyHistory.shift();
+      }
+
+      const n = Math.max(1, state.energyHistory.length);
+      const avg = state.energySum / n;
+
+      if (mono > avg * cfg.peakFactor && (nowMs - state.lastPeakTimeMs) > cfg.refractoryMs) {
+        const interval = nowMs - state.lastPeakTimeMs;
+        state.lastPeakTimeMs = nowMs;
+
+        if (interval > 0) {
+          const detected = 60000 / interval;
+          const clampedBpm = clamp(detected, cfg.minBpm, cfg.maxBpm);
+          state.bpm = state.bpm * (1 - cfg.emaAlpha) + clampedBpm * cfg.emaAlpha;
+        }
+      }
+    }
+
+    /* =====================================================================
+      10) Color system (Mood presets)
+    ====================================================================== */
+    function currentMood() {
+      return PARAMS.moods[PARAMS.mood.current] || PARAMS.moods.rainbow_disco;
+    }
+
+    function rgbToCss([r, g, b], a) {
+      const rr = clamp(Math.round(r), 0, 255);
+      const gg = clamp(Math.round(g), 0, 255);
+      const bb = clamp(Math.round(b), 0, 255);
+      return `rgba(${rr},${gg},${bb},${clamp(a, 0, 1)})`;
+    }
+
+    function lerpRgb(a, b, t) {
+      return [
+        lerp(a[0], b[0], t),
+        lerp(a[1], b[1], t),
+        lerp(a[2], b[2], t),
+      ];
+    }
+
+    function colorForParticle({ kind, energy, k, count, hueOffsetDeg, bandIndex }) {
+      const d = PARAMS.draw;
+      const mood = currentMood();
+
+      // Decide which style entry applies
+      let style;
+      if (kind === "master") style = mood.master;
+      else style = (mood.bands && mood.bands[bandIndex]) ? mood.bands[bandIndex] : { mode: "rainbow" };
+
+      if (style.mode === "gradient") {
+        const from = style.from || [255, 255, 255];
+        const to   = style.to   || [255, 255, 255];
+        const t = (count <= 1) ? 0 : (k / (count - 1));
+        // Optional energy wobble (subtle)
+        const wobble = 0.04 * energy * S(state.time * 1.2 + k * 0.02);
+        const tt = clamp(t + wobble, 0, 1);
+        const rgb = lerpRgb(from, to, tt);
+        return rgbToCss(rgb, d.color.alpha);
+      }
+
+      // Default: rainbow
+      const hue = (k * (360 / Math.max(1, count)) + state.time * d.color.hueTimeRate + hueOffsetDeg) % 360;
+      return `hsla(${hue},100%,65%,${d.color.alpha})`;
+    }
+
+    /* =====================================================================
+      11) Drawing + Camera transform
+    ====================================================================== */
+    function beginFrame() {
+      const w = state.vw;
+      const h = state.vh;
+
+      if (!state.backgroundDrawn) {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = PARAMS.canvas.backgroundColor;
+        ctx.fillRect(0, 0, w, h);
+        state.backgroundDrawn = true;
+      }
+
+      ctx.globalCompositeOperation = PARAMS.canvas.compositeDraw;
+      ctx.fillStyle = `rgba(0,0,0,${clamp(PARAMS.canvas.trailAlpha, 0, 1)})`;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.globalCompositeOperation = PARAMS.canvas.compositeFX;
+    }
+
+    function cameraFrame() {
+      // Optional smoothing: EMA toward PARAMS.camera
+      const a = clamp(PARAMS.camera.smoothing, 0, 0.98);
+      if (a > 0) {
+        state.cam.zoom = state.cam.zoom * a + PARAMS.camera.zoom * (1 - a);
+        state.cam.rotX = state.cam.rotX * a + PARAMS.camera.rotX * (1 - a);
+        state.cam.rotY = state.cam.rotY * a + PARAMS.camera.rotY * (1 - a);
+      } else {
+        state.cam.zoom = PARAMS.camera.zoom;
+        state.cam.rotX = PARAMS.camera.rotX;
+        state.cam.rotY = PARAMS.camera.rotY;
+      }
+
+      const rx = state.cam.rotX;
+      const ry = state.cam.rotY;
+
+      return {
+        zoom: state.cam.zoom,
+        sx: S(rx), cx: C(rx),
+        sy: S(ry), cy: C(ry),
+      };
+    }
+
+    function applyCamera(X, Y, Z, cam) {
+      // Rotate X then Y (order documented; stable)
+      // rotX
+      const y1 = Y * cam.cx - Z * cam.sx;
+      const z1 = Y * cam.sx + Z * cam.cx;
+      const x1 = X;
+
+      // rotY
+      const x2 = x1 * cam.cy + z1 * cam.sy;
+      const z2 = -x1 * cam.sy + z1 * cam.cy;
+      const y2 = y1;
+
+      // Zoom scales X/Y for intuitive “zoom”; Z unchanged for stability
+      return { X: x2 * cam.zoom, Y: y2 * cam.zoom, Z: z2 };
+    }
+
+    function drawOrb({ kind, bandIndex, centerX, centerY, energyMono, energyL, energyR, particleCount, hueOffsetDeg, scaleMul, sizeMul, cam }) {
+      const d = PARAMS.draw;
+
+      // Energy driving this orb (mono for master; side-specific for sub orbs)
+      const e = clamp(energyMono, 0, 1);
+
+      const scale = (d.baseScale + e * d.energyScale) * scaleMul;
+
+      // Particles
+      for (let k = 0; k < particleCount; k++) {
+        const angle = (k * TAU) / particleCount;
+
+        const spiralTimeRate = d.spiral.timeBase + e * d.spiral.timeEnergy;
+        const spiralAmp = d.spiral.ampBase + e * d.spiral.ampEnergy;
+        const spiralPhase = state.time * spiralTimeRate + k * d.spiral.perParticlePhase + (hueOffsetDeg / 100);
+        const spiral = S(spiralPhase) * spiralAmp;
+
+        const a = state.time * (d.aRateBase + e * d.aRateEnergy) + angle + spiral;
+        const b = S(a * d.bRate + angle) * (d.bBase + e * d.bEnergy);
+
+        // Base pseudo-3D mapping
+        const X0 = C(b) * C(a);
+        const Y0 = S(b);
+        const Z0 = C(b) * S(a) + d.zBias;
+
+        // Camera
+        const p = applyCamera(X0, Y0, Z0, cam);
+
+        // Projection-ish depth shaping
+        const depth = Math.max(d.depthMin, p.Z * d.depthScale + d.depthBias);
+
+        // Size (zoom included in camera X/Y; size should “feel” zoomed too)
+        const size = ((d.sizeBase + e * d.sizeEnergy) * sizeMul * cam.zoom) / depth;
+
+        ctx.fillStyle = colorForParticle({
+          kind,
+          energy: e,
+          k,
+          count: particleCount,
+          hueOffsetDeg,
+          bandIndex,
+        });
+
+        ctx.fillRect(
+          centerX + (p.X * scale) / depth - size * 0.5,
+          centerY + (p.Y * scale) / depth - size * 0.5,
+          size,
+          size
+        );
+      }
+    }
+
+    /* =====================================================================
+      12) Debug FPS
+    ====================================================================== */
+    function updateFPS(nowMs) {
+      if (!state.debug) return;
+
+      const cfg = PARAMS.performance;
+      state.fpsFrames.push(nowMs);
+      while (state.fpsFrames.length > cfg.fpsSampleSize) state.fpsFrames.shift();
+
+      if ((nowMs - state.lastFpsUpdate) > cfg.fpsUpdateIntervalMs && state.fpsFrames.length > 1) {
+        const span = state.fpsFrames[state.fpsFrames.length - 1] - state.fpsFrames[0];
+        const fps = ((state.fpsFrames.length - 1) / span) * 1000;
+        fpsEl.textContent = `FPS: ${fps.toFixed(1)}`;
+        state.lastFpsUpdate = nowMs;
+      }
+    }
+
+    function toggleDebug() {
+      state.debug = !state.debug;
+      fpsEl.style.display = state.debug ? "block" : "none";
+
+      if (state.debug) {
+        state.fpsFrames.length = 0;
+        state.lastFpsUpdate = performance.now();
+        setStatus("debug enabled (FPS visible)");
+      } else {
+        setStatus("debug disabled");
+      }
+    }
+
+    /* =====================================================================
+      13) Preset share/import (hash)
+    ====================================================================== */
+    function exportPreset() {
+      const preset = {
+        // mood + touch mode
+        mood: PARAMS.mood.current,
+        gesture: PARAMS.touch.mode,
+
+        // orb grammar + visuals
+        bands: PARAMS.orbs.stereoBands,
+        pmin: PARAMS.particles.min,
+        pmax: PARAMS.particles.max,
+        trail: PARAMS.canvas.trailAlpha,
+        orbit: PARAMS.orbs.orbit.baseRadius,
+        orbitE: PARAMS.orbs.orbit.energyRadius,
+
+        // camera
+        camZ: PARAMS.camera.zoom,
+        camX: PARAMS.camera.rotX,
+        camY: PARAMS.camera.rotY,
+      };
+
+      const json = JSON.stringify(preset);
+      const encoded = PARAMS.share.useBase64Url ? base64UrlEncode(json) : btoa(json);
+
+      window.location.hash = `${PARAMS.share.hashPrefix}${encoded}`;
+
+      const url = window.location.href;
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(url).then(
+          () => setStatus("preset URL copied ✅"),
+          () => setStatus("preset saved to URL (copy from address bar)")
+        );
+      } else {
+        setStatus("preset saved to URL (copy from address bar)");
+      }
+    }
+
+    function importPreset() {
+      const hash = window.location.hash || "";
+      if (!hash.startsWith("#" + PARAMS.share.hashPrefix)) return false;
+
+      try {
+        const encoded = hash.slice(("#" + PARAMS.share.hashPrefix).length);
+        const json = PARAMS.share.useBase64Url ? base64UrlDecode(encoded) : atob(encoded);
+        const preset = JSON.parse(json);
+
+        // Mood
+        if (preset.mood && PARAMS.moods[preset.mood]) PARAMS.mood.current = preset.mood;
+        if (preset.gesture === "visual" || preset.gesture === "camera") PARAMS.touch.mode = preset.gesture;
+
+        // Render
+        if (preset.bands != null) PARAMS.orbs.stereoBands = clamp(preset.bands, 0, PARAMS.orbs.maxBands);
+        if (preset.pmin  != null) PARAMS.particles.min = clamp(preset.pmin, 4, 240);
+        if (preset.pmax  != null) PARAMS.particles.max = clamp(preset.pmax, 8, 360);
+        if (preset.trail != null) PARAMS.canvas.trailAlpha = clamp(preset.trail, 0, 0.25);
+        if (preset.orbit != null) PARAMS.orbs.orbit.baseRadius = clamp(preset.orbit, 40, 520);
+        if (preset.orbitE!= null) PARAMS.orbs.orbit.energyRadius = clamp(preset.orbitE, 0, 620);
+
+        // Camera (note: UI uses degrees; internal stores radians)
+        if (preset.camZ != null) PARAMS.camera.zoom = clamp(preset.camZ, PARAMS.camera.zoomMin, PARAMS.camera.zoomMax);
+        if (preset.camX != null) PARAMS.camera.rotX = clamp(preset.camX, PARAMS.camera.rotXMin, PARAMS.camera.rotXMax);
+        if (preset.camY != null) PARAMS.camera.rotY = preset.camY;
+
+        // sync smooth cam to new values
+        state.cam.zoom = PARAMS.camera.zoom;
+        state.cam.rotX = PARAMS.camera.rotX;
+        state.cam.rotY = PARAMS.camera.rotY;
+
+        syncAllControlsFromParams();
+        setStatus("preset loaded ✅");
+        return true;
+      } catch (err) {
+        console.warn("preset load failed:", err);
+        return false;
+      }
+    }
+
+    /* =====================================================================
+      14) Control bindings (BI-DIRECTIONAL)
+    ====================================================================== */
+    const CONTROL_BINDS = [];
+    const CONTROL_EL = {};
+
+    function bindRange({ id, parse, get, set, fmt }) {
+      const el = document.getElementById(id);
+      const out = document.getElementById(`${id}-v`);
+      const format = fmt || ((v) => String(v));
+
+      function applyFromUI() {
+        const v = parse(el.value);
+        set(v);
+        out.textContent = format(get());
+      }
+
+      function syncToUI() {
+        const v = get();
+        el.value = String(v);
+        out.textContent = format(v);
+      }
+
+      el.addEventListener("input", applyFromUI);
+      CONTROL_BINDS.push({ applyFromUI, syncToUI });
+      CONTROL_EL[id] = el;
+
+      syncToUI();
+    }
+
+    function bindSelect({ id, get, set, fmt }) {
+      const el = document.getElementById(id);
+      const out = document.getElementById(`${id}-v`);
+      const format = fmt || ((v) => String(v));
+
+      function applyFromUI() {
+        set(el.value);
+        out.textContent = format(get());
+      }
+
+      function syncToUI() {
+        const v = get();
+        el.value = String(v);
+        out.textContent = format(v);
+      }
+
+      el.addEventListener("change", applyFromUI);
+      CONTROL_BINDS.push({ applyFromUI, syncToUI });
+      CONTROL_EL[id] = el;
+
+      syncToUI();
+    }
+
+    function syncAllControlsFromParams() {
+      for (const b of CONTROL_BINDS) b.syncToUI();
+    }
+
+    // Populate mood selector
+    (function populateMoods() {
+      const sel = document.getElementById("ctl-mood");
+      sel.innerHTML = "";
+      for (const [key, m] of Object.entries(PARAMS.moods)) {
+        const opt = document.createElement("option");
+        opt.value = key;
+        opt.textContent = m.label || key;
+        sel.appendChild(opt);
+      }
+    })();
+
+    // Mood
+    bindSelect({
+      id: "ctl-mood",
+      get: () => PARAMS.mood.current,
+      set: (v) => { if (PARAMS.moods[v]) PARAMS.mood.current = v; },
+      fmt: (v) => (PARAMS.moods[v]?.label || v),
+    });
+
+    // Touch mode
+    bindSelect({
+      id: "ctl-gesture",
+      get: () => PARAMS.touch.mode,
+      set: (v) => { if (v === "visual" || v === "camera") PARAMS.touch.mode = v; },
+      fmt: (v) => (v === "camera" ? "Camera" : "Visual"),
+    });
+
+    // Stereo bands
+    bindRange({
+      id: "ctl-bands",
+      parse: (s) => parseInt(s, 10),
+      get: () => PARAMS.orbs.stereoBands,
+      set: (v) => { PARAMS.orbs.stereoBands = clamp(v, 0, PARAMS.orbs.maxBands); },
+      fmt: (v) => `${v}  (total orbs: ${1 + 2 * v})`,
+    });
+
+    // Particles
+    bindRange({
+      id: "ctl-pmin",
+      parse: (s) => parseInt(s, 10),
+      get: () => PARAMS.particles.min,
+      set: (v) => { PARAMS.particles.min = v; },
+      fmt: (v) => `${v}`,
+    });
+    bindRange({
+      id: "ctl-pmax",
+      parse: (s) => parseInt(s, 10),
+      get: () => PARAMS.particles.max,
+      set: (v) => { PARAMS.particles.max = v; },
+      fmt: (v) => `${v}`,
+    });
+
+    // Trail + orbit
+    bindRange({
+      id: "ctl-trail",
+      parse: (s) => parseFloat(s),
+      get: () => PARAMS.canvas.trailAlpha,
+      set: (v) => { PARAMS.canvas.trailAlpha = v; },
+      fmt: (v) => v.toFixed(2),
+    });
+
+    bindRange({
+      id: "ctl-orbit",
+      parse: (s) => parseInt(s, 10),
+      get: () => PARAMS.orbs.orbit.baseRadius,
+      set: (v) => { PARAMS.orbs.orbit.baseRadius = v; },
+      fmt: (v) => `${v}px`,
+    });
+
+    bindRange({
+      id: "ctl-orbitE",
+      parse: (s) => parseInt(s, 10),
+      get: () => PARAMS.orbs.orbit.energyRadius,
+      set: (v) => { PARAMS.orbs.orbit.energyRadius = v; },
+      fmt: (v) => `${v}px`,
+    });
+
+    // Camera: UI uses degrees for rotX/rotY
+    bindRange({
+      id: "ctl-zoom",
+      parse: (s) => parseFloat(s),
+      get: () => PARAMS.camera.zoom,
+      set: (v) => {
+        PARAMS.camera.zoom = clamp(v, PARAMS.camera.zoomMin, PARAMS.camera.zoomMax);
+        state.cam.zoom = PARAMS.camera.zoom; // keep smooth state aligned if smoothing=0
+      },
+      fmt: (v) => v.toFixed(2),
+    });
+
+    bindRange({
+      id: "ctl-rotx",
+      parse: (s) => parseFloat(s),
+      get: () => Math.round((PARAMS.camera.rotX * 180) / Math.PI),
+      set: (deg) => {
+        const rad = (deg * Math.PI) / 180;
+        PARAMS.camera.rotX = clamp(rad, PARAMS.camera.rotXMin, PARAMS.camera.rotXMax);
+        state.cam.rotX = PARAMS.camera.rotX;
+      },
+      fmt: (deg) => `${deg}°`,
+    });
+
+    bindRange({
+      id: "ctl-roty",
+      parse: (s) => parseFloat(s),
+      get: () => {
+        // display wrapped degrees in [-180, 180]
+        let deg = (PARAMS.camera.rotY * 180) / Math.PI;
+        deg = ((deg + 180) % 360 + 360) % 360 - 180;
+        return Math.round(deg);
+      },
+      set: (deg) => {
+        const rad = (deg * Math.PI) / 180;
+        PARAMS.camera.rotY = rad;
+        state.cam.rotY = PARAMS.camera.rotY;
+      },
+      fmt: (deg) => `${deg}°`,
+    });
+
+    /* =====================================================================
+      15) Keyboard shortcuts
+    ====================================================================== */
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen?.().then(
+          () => setStatus("fullscreen enabled ✅ (F or ESC to exit)"),
+          (err) => setStatus("fullscreen failed ❌ " + (err?.message || String(err)))
+        );
+      } else {
+        document.exitFullscreen?.().then(
+          () => setStatus("fullscreen disabled"),
+          () => setStatus("fullscreen exit failed")
+        );
+      }
+    }
+
+    function handleKeyboard(e) {
+      if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT")) return;
+
+      const key = e.key;
+
+      if (key === " ") {
+        e.preventDefault();
+        state.paused = !state.paused;
+        setStatus(state.paused ? "paused" : "resumed");
+        return;
+      }
+
+      const lower = key.toLowerCase();
+      const kcfg = PARAMS.keyboard;
+      switch (lower) {
+        case "f":
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+        case "r":
+          e.preventDefault();
+          resetToDefaults();
+          break;
+        case "d":
+          e.preventDefault();
+          toggleDebug();
+          break;
+        case "s":
+          e.preventDefault();
+          exportPreset();
+          break;
+        case "?":
+          e.preventDefault();
+          showHelp();
+          break;
+        case "/":
+          if (e.shiftKey) { e.preventDefault(); showHelp(); }
+          break;
+
+        // Camera keys
+        case "j":
+          e.preventDefault();
+          PARAMS.camera.rotY -= kcfg.camRotateStepRad;
+          state.cam.rotY = PARAMS.camera.rotY;
+          syncAllControlsFromParams();
+          break;
+        case "l":
+          e.preventDefault();
+          PARAMS.camera.rotY += kcfg.camRotateStepRad;
+          state.cam.rotY = PARAMS.camera.rotY;
+          syncAllControlsFromParams();
+          break;
+        case "i":
+          e.preventDefault();
+          PARAMS.camera.rotX = clamp(PARAMS.camera.rotX - kcfg.camRotateStepRad, PARAMS.camera.rotXMin, PARAMS.camera.rotXMax);
+          state.cam.rotX = PARAMS.camera.rotX;
+          syncAllControlsFromParams();
+          break;
+        case "k":
+          e.preventDefault();
+          PARAMS.camera.rotX = clamp(PARAMS.camera.rotX + kcfg.camRotateStepRad, PARAMS.camera.rotXMin, PARAMS.camera.rotXMax);
+          state.cam.rotX = PARAMS.camera.rotX;
+          syncAllControlsFromParams();
+          break;
+        case "=":
+          e.preventDefault();
+          PARAMS.camera.zoom = clamp(PARAMS.camera.zoom + kcfg.camZoomStep, PARAMS.camera.zoomMin, PARAMS.camera.zoomMax);
+          state.cam.zoom = PARAMS.camera.zoom;
+          syncAllControlsFromParams();
+          break;
+        case "-":
+          e.preventDefault();
+          PARAMS.camera.zoom = clamp(PARAMS.camera.zoom - kcfg.camZoomStep, PARAMS.camera.zoomMin, PARAMS.camera.zoomMax);
+          state.cam.zoom = PARAMS.camera.zoom;
+          syncAllControlsFromParams();
+          break;
+        case "0":
+          e.preventDefault();
+          resetCamera();
+          break;
+      }
+    }
+    document.addEventListener("keydown", handleKeyboard);
+
+    /* =====================================================================
+      16) Mouse camera controls (drag rotate, wheel zoom)
+    ====================================================================== */
+    function handleMouseDown(e) {
+      if (e.button !== 0) return;
+      state.mouse.dragging = true;
+      state.mouse.startX = e.clientX;
+      state.mouse.startY = e.clientY;
+      canvas.classList.add("dragging");
+    }
+
+    function handleMouseMove(e) {
+      if (!state.mouse.dragging) return;
+
+      const dx = e.clientX - state.mouse.startX;
+      const dy = e.clientY - state.mouse.startY;
+      state.mouse.startX = e.clientX;
+      state.mouse.startY = e.clientY;
+
+      const k = PARAMS.camera.mouseRotatePerPixel;
+      PARAMS.camera.rotY += dx * k;
+      PARAMS.camera.rotX = clamp(PARAMS.camera.rotX + dy * k, PARAMS.camera.rotXMin, PARAMS.camera.rotXMax);
+
+      state.cam.rotX = PARAMS.camera.rotX;
+      state.cam.rotY = PARAMS.camera.rotY;
+
+      syncAllControlsFromParams();
+    }
+
+    function handleMouseUp() {
+      state.mouse.dragging = false;
+      canvas.classList.remove("dragging");
+    }
+
+    function handleWheel(e) {
+      e.preventDefault();
+      // Exponential zoom feels nicer across devices
+      const dz = Math.exp(-e.deltaY * PARAMS.camera.wheelZoomPerDelta);
+      PARAMS.camera.zoom = clamp(PARAMS.camera.zoom * dz, PARAMS.camera.zoomMin, PARAMS.camera.zoomMax);
+      state.cam.zoom = PARAMS.camera.zoom;
+      syncAllControlsFromParams();
+    }
+
+    canvas.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    window.addEventListener("mouseup", handleMouseUp, { passive: true });
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
+
+    /* =====================================================================
+      17) Touch gestures
+      - Visual mode:
+          swipe up/down: trail
+          swipe left/right: orbit base radius
+          pinch: bands (stereo pairs)
+      - Camera mode:
+          one-finger drag: rotate
+          pinch: zoom
+          two-finger pan: rotate (subtle) + pinch zoom
+    ====================================================================== */
+    function touchDistance(t0, t1) {
+      const dx = t0.clientX - t1.clientX;
+      const dy = t0.clientY - t1.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function touchMidpoint(t0, t1) {
+      return { x: (t0.clientX + t1.clientX) * 0.5, y: (t0.clientY + t1.clientY) * 0.5 };
+    }
+
+    function handleTouchStart(e) {
+      if (e.touches.length === 1) {
+        state.touch.active = true;
+        state.touch.startX = state.touch.lastX = e.touches[0].clientX;
+        state.touch.startY = state.touch.lastY = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        const d = touchDistance(e.touches[0], e.touches[1]);
+        const m = touchMidpoint(e.touches[0], e.touches[1]);
+        state.touch.startDistance = state.touch.lastDistance = d;
+        state.touch.startMidX = state.touch.lastMidX = m.x;
+        state.touch.startMidY = state.touch.lastMidY = m.y;
+      }
+    }
+
+    function handleTouchMove(e) {
+      const mode = PARAMS.touch.mode;
+      const tcfg = PARAMS.touch;
+
+      // Visual mode gestures
+      if (mode === "visual") {
+        if (e.touches.length === 1 && state.touch.active) {
+          const x = e.touches[0].clientX;
+          const y = e.touches[0].clientY;
+          const dx = x - state.touch.lastX;
+          const dy = y - state.touch.lastY;
+
+          // Decide axis by dominance over threshold
+          const ax = Math.abs(x - state.touch.startX);
+          const ay = Math.abs(y - state.touch.startY);
+
+          // Vertical swipe -> trail
+          if (ay > tcfg.swipeThresholdPx && ay > ax) {
+            e.preventDefault();
+            const deltaTrail = -dy * tcfg.trailPerPixel;
+            PARAMS.canvas.trailAlpha = clamp(PARAMS.canvas.trailAlpha + deltaTrail, 0, 0.25);
+            state.touch.lastY = y;
+            syncAllControlsFromParams();
+            return;
+          }
+
+          // Horizontal swipe -> orbit radius
+          if (ax > tcfg.swipeThresholdPx && ax > ay) {
+            e.preventDefault();
+            const deltaOrbit = dx * tcfg.orbitPerPixel;
+            PARAMS.orbs.orbit.baseRadius = clamp(PARAMS.orbs.orbit.baseRadius + deltaOrbit, 40, 520);
+            state.touch.lastX = x;
+            syncAllControlsFromParams();
+            return;
+          }
+        }
+
+        // Pinch -> bands
+        if (e.touches.length === 2) {
+          const dist = touchDistance(e.touches[0], e.touches[1]);
+          const delta = dist - state.touch.lastDistance;
+
+          if (Math.abs(delta) > tcfg.pinchThresholdPx) {
+            e.preventDefault();
+            const step = (delta > 0) ? tcfg.pinchBandStep : -tcfg.pinchBandStep;
+            PARAMS.orbs.stereoBands = clamp(PARAMS.orbs.stereoBands + step, 0, PARAMS.orbs.maxBands);
+            state.touch.lastDistance = dist;
+            syncAllControlsFromParams();
+          }
+        }
+
+        return;
+      }
+
+      // Camera mode gestures
+      if (mode === "camera") {
+        // One-finger drag rotate
+        if (e.touches.length === 1 && state.touch.active) {
+          e.preventDefault();
+          const x = e.touches[0].clientX;
+          const y = e.touches[0].clientY;
+          const dx = x - state.touch.lastX;
+          const dy = y - state.touch.lastY;
+
+          const k = tcfg.rotatePerPixel;
+          PARAMS.camera.rotY += dx * k;
+          PARAMS.camera.rotX = clamp(PARAMS.camera.rotX + dy * k, PARAMS.camera.rotXMin, PARAMS.camera.rotXMax);
+
+          state.touch.lastX = x;
+          state.touch.lastY = y;
+
+          state.cam.rotX = PARAMS.camera.rotX;
+          state.cam.rotY = PARAMS.camera.rotY;
+
+          syncAllControlsFromParams();
+          return;
+        }
+
+        // Two-finger pinch zoom + midpoint pan rotate
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          const dist = touchDistance(e.touches[0], e.touches[1]);
+          const mid = touchMidpoint(e.touches[0], e.touches[1]);
+
+          // zoom
+          const dd = dist - state.touch.lastDistance;
+          if (Math.abs(dd) > 0.5) {
+            const deltaZoom = dd * tcfg.pinchZoomPerPixel;
+            PARAMS.camera.zoom = clamp(PARAMS.camera.zoom + deltaZoom, PARAMS.camera.zoomMin, PARAMS.camera.zoomMax);
+            state.cam.zoom = PARAMS.camera.zoom;
+          }
+          state.touch.lastDistance = dist;
+
+          // midpoint movement rotates a bit
+          const mdx = mid.x - state.touch.lastMidX;
+          const mdy = mid.y - state.touch.lastMidY;
+          state.touch.lastMidX = mid.x;
+          state.touch.lastMidY = mid.y;
+
+          const k = tcfg.rotatePerPixel * 0.85;
+          PARAMS.camera.rotY += mdx * k;
+          PARAMS.camera.rotX = clamp(PARAMS.camera.rotX + mdy * k, PARAMS.camera.rotXMin, PARAMS.camera.rotXMax);
+          state.cam.rotX = PARAMS.camera.rotX;
+          state.cam.rotY = PARAMS.camera.rotY;
+
+          syncAllControlsFromParams();
+          return;
+        }
+      }
+    }
+
+    function handleTouchEnd() {
+      state.touch.active = false;
+    }
+
+    canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
+    canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+    canvas.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+    /* =====================================================================
+      18) UI events
+    ====================================================================== */
+    btnMic.addEventListener("click", startMic);
+
+    fileInput.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      await startFile(file);
+      fileInput.value = ""; // allow selecting same file again
+    });
+
+    btnHide.addEventListener("click", hideOverlay);
+    btnOverlay.addEventListener("click", showOverlay);
+    btnStop.addEventListener("click", stopAudio);
+    btnShare.addEventListener("click", exportPreset);
+    btnCamReset.addEventListener("click", resetCamera);
+
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) hideOverlay();
+    });
+
+    player.addEventListener("error", () => {
+      const errMsg = player.error ? `code ${player.error.code}` : "unknown error";
+      logError("audio element: " + errMsg);
+      setStatus("playback error: " + errMsg);
+    });
+
+    /* =====================================================================
+      19) Main loop
+    ====================================================================== */
+    function tick(nowMs) {
+      updateFPS(nowMs);
+
+      if (state.paused && PARAMS.keyboard.pauseFreezesVisualOnly) {
+        state.lastNow = nowMs;
+        requestAnimationFrame(tick);
+        return;
+      }
+
+      const dt = Math.min(PARAMS.time.dtClampSeconds, (nowMs - state.lastNow) / 1000);
+      state.lastNow = nowMs;
+      state.time += dt;
+
+      beginFrame();
+
+      // Sample audio (or idle oscillator), then smooth
+      const sample = sampleSpectrum();
+      updateSmoothedEnergies(sample);
+
+      const bpmEnabled = (state.mode === "mic" || state.mode === "file") && sample.isReal;
+      updateBpmLikeDetector(nowMs, bpmEnabled);
+
+      // Particle count derived from bpm, clamped
+      const pMin = Math.min(PARAMS.particles.min, PARAMS.particles.max);
+      const pMax = Math.max(PARAMS.particles.min, PARAMS.particles.max);
+      const particleCountBase = clamp(Math.round(state.bpm / PARAMS.particles.bpmDivisor), pMin, pMax);
+
+      const cam = cameraFrame();
+
+      const cx = state.vw * 0.5;
+      const cy = state.vh * 0.5;
+
+      // === Master orb (center, mono/sum) ===
+      const masterParticles = clamp(
+        Math.round(particleCountBase * PARAMS.orbs.master.particleMultiplier),
+        pMin,
+        Math.max(pMax, pMin)
+      );
+
+      drawOrb({
+        kind: "master",
+        bandIndex: 0,
+        centerX: cx,
+        centerY: cy,
+        energyMono: state.masterEnergy,
+        energyL: 0,
+        energyR: 0,
+        particleCount: masterParticles,
+        hueOffsetDeg: 0,
+        scaleMul: PARAMS.orbs.master.scaleMultiplier,
+        sizeMul: PARAMS.orbs.master.sizeMultiplier,
+        cam,
+      });
+
+      // === Stereo band orbs (Left + Right per band) ===
+      const nBands = clamp(PARAMS.orbs.stereoBands, 0, PARAMS.orbs.maxBands);
+      if (nBands > 0) {
+        const o = PARAMS.orbs.orbit;
+
+        const phase = state.time * o.phaseRate;
+        const wobble = o.hemisphereWobbleRad;
+
+        for (let bi = 0; bi < nBands; bi++) {
+          const band = state.bands[bi] || { l: 0, r: 0, m: 0 };
+
+          const base = o.baseRadius + bi * o.bandSpacing;
+          const dist = base + band.m * o.energyRadius;
+
+          // Keep L on left-ish (angle around PI), R on right-ish (angle around 0), with time wobble
+          const w = S(phase + bi * 0.9) * wobble;
+
+          const aL = Math.PI + w;
+          const aR = 0 - w;
+
+          const xL = cx + C(aL) * dist;
+          const yL = cy + S(aL * o.yPhaseMultiplier) * dist * o.yScale;
+
+          const xR = cx + C(aR) * dist;
+          const yR = cy + S(aR * o.yPhaseMultiplier) * dist * o.yScale;
+
+          // Left orb shows L energy; Right orb shows R energy (still stereo forever)
+          drawOrb({
+            kind: "band",
+            bandIndex: bi,
+            centerX: xL,
+            centerY: yL,
+            energyMono: band.l,
+            energyL: band.l,
+            energyR: band.r,
+            particleCount: particleCountBase,
+            hueOffsetDeg: (bi * 120) + 10,
+            scaleMul: PARAMS.orbs.sub.scaleMultiplier,
+            sizeMul: PARAMS.orbs.sub.sizeMultiplier,
+            cam,
+          });
+
+          drawOrb({
+            kind: "band",
+            bandIndex: bi,
+            centerX: xR,
+            centerY: yR,
+            energyMono: band.r,
+            energyL: band.l,
+            energyR: band.r,
+            particleCount: particleCountBase,
+            hueOffsetDeg: (bi * 120) + 190,
+            scaleMul: PARAMS.orbs.sub.scaleMultiplier,
+            sizeMul: PARAMS.orbs.sub.sizeMultiplier,
+            cam,
+          });
+        }
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    /* =====================================================================
+      20) Boot / lifecycle
+    ====================================================================== */
+    window.addEventListener("beforeunload", () => {
+      try { stopAudio(); } catch {}
+      try { state.audioCtx?.close?.(); } catch {}
+      state.audioCtx = null;
+    });
+
+    // Load preset from URL (PARAMS -> UI sync happens inside importPreset)
+    const presetLoaded = importPreset();
+    if (!presetLoaded) {
+      setStatus("idle (rendering demo mode). Choose Microphone or Audio File.");
+    }
+
+    // One-time help hint
+    if (!sessionStorage.getItem(PARAMS.ui.helpShownStorageKey)) {
+      sessionStorage.setItem(PARAMS.ui.helpShownStorageKey, "1");
+      window.setTimeout(showHelp, PARAMS.ui.helpFirstShowDelayMs);
+    }
+
+    requestAnimationFrame((t) => { state.lastNow = t; tick(t); });
+
+  })();
+  </script>
+</body>
+</html>
