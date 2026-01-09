@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kisuul Stereo Sphere Spirals</title>
+  <style>
+    html,body{height:100%;margin:0;background:#000;color:#fff;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;}
+    #wrap{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr;}
+    #bar{
+      display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;
+      padding:.6rem .8rem;border-bottom:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.55);backdrop-filter: blur(8px);
+    }
+    button,label,.pill{
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.08);
+      color:#fff;border-radius:10px;
+      padding:.45rem .7rem;
+      cursor:pointer;font-weight:600;
+      user-select:none;
+    }
+    button:hover,label:hover{background:rgba(255,255,255,.12)}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    input[type=file]{display:none}
+    #status{opacity:.9;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9rem}
+    #canvas{width:100%;height:100%;display:block}
+    #panel{
+      position:absolute;right:.8rem;top:3.2rem;max-width:min(420px,92vw);
+      padding:.7rem .8rem;border:1px solid rgba(255,255,255,.12);
+      border-radius:14px;background:rgba(0,0,0,.55);
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      font-size:.85rem;line-height:1.3;white-space:pre-wrap;
+      pointer-events:none;
+    }
+  </style>
+</head>
+<body>
+<div id="wrap">
+  <div id="bar">
+    <button id="btnMic">Enable Mic</button>
+    <label for="file">Use Audio File</label>
+    <input id="file" type="file" accept="audio/*" />
+    <button id="btnStopAudio" disabled>Stop Audio</button>
+    <span class="pill">Scene: Stereo Sphere Spirals</span>
+    <button id="btnRec">Start Rec</button>
+    <button id="btnShot">Screenshot</button>
+    <span id="status">idle (demo features)</span>
+  </div>
+  <div style="position:relative">
+    <canvas id="canvas"></canvas>
+    <div id="panel"></div>
+  </div>
+</div>
+<script type="module">
+const CONFIG = {
+  RENDER: {
+    TARGET_FPS: 60,
+    DPR_MAX: 2,
+    CLEAR_ON_FIRST_FRAME: true,
+    TRAIL_ALPHA: 0.08,
+    BACKGROUND_RGB: [0, 0, 0],
+    ADDITIVE_BLEND_MODE: "lighter",
+    HUD_ENABLED: true,
+  },
+  AUDIO: {
+    MASTER_FFT_SIZE: 1024,
+    CHANNEL_FFT_SIZE: 512,
+    SMOOTHING_TIME_CONSTANT: 0.8,
+    OUTPUT_GAIN: 0.9,
+    BANDS_HZ: [
+      { name: "sub", from: 20, to: 60 },
+      { name: "bass", from: 60, to: 180 },
+      { name: "lowMid", from: 180, to: 600 },
+      { name: "highMid", from: 600, to: 2400 },
+      { name: "treble", from: 2400, to: 12000 },
+    ],
+    ONSET: {
+      FLUX_HISTORY_FRAMES: 120,
+      THRESHOLD_MULTIPLIER: 1.6,
+      REFRACTORY_MS: 220,
+    },
+    BPM: {
+      MIN: 60,
+      MAX: 200,
+      INTERVAL_HISTORY: 12,
+      SMOOTHING: 0.12,
+    },
+    IDLE_DEMO: {
+      ENABLED: true,
+      BASE_BPM: 120,
+      WOBBLE_HZ: 0.35,
+    },
+  },
+  STEREO: {
+    EPS: 1e-6,
+    ORBIT_PHASE_SPEED: 0.35,
+    ORBIT_Y_FREQ: 1.12,
+    ORBIT_Y_RATIO: 0.65,
+    SEPARATION_FROM_WIDTH: 480,
+    SEPARATION_FROM_BASS: 120,
+    MIN_SEPARATION: 40,
+    MAX_SEP_FRACTION_OF_MIN_DIM: 0.4,
+    CENTER_BOOST_BASE: 1.3,
+    CENTER_BOOST_FROM_MONO: 1.5,
+    LEFT_HUE_OFFSET: 0,
+    RIGHT_HUE_OFFSET: 120,
+    CENTER_HUE_OFFSET: 240,
+  },
+  SCENE: {
+    QUAD_COUNT: 16,
+    QUAD_ALPHA: 0.92,
+    COLOR_SPACE: "fixedHSL",
+    HUE_OFFSET_DEG: 0,
+    SPHERE: {
+      RADIUS_PX: 420,
+      DEPTH_A: 0.8,
+      DEPTH_B: 1.8,
+      SCREEN_CENTER_X_FACTOR: 0.5,
+      SCREEN_CENTER_Y_FACTOR: 0.5,
+    },
+    MOTION: {
+      LONGITUDE_SPEED: 1.25,
+      LATITUDE_GAIN: 1.2,
+      LATITUDE_WAVE: 0.33,
+      SPIRAL_AMPLITUDE: 1.8,
+      SPIRAL_SPEED: 0.8,
+      PHASE_PER_AGENT: (Math.PI * 2),
+      SPIRAL_AGENT_PHASE_STEP: 0.5,
+    },
+    SIZE: {
+      BASE: 10,
+      AUDIO_GAIN: 18,
+    },
+    AUDIO_MAP: {
+      SPEED_FROM_BASS: 2.2,
+      LAT_FROM_BRIGHTNESS: 0.35,
+      SCALE_FROM_BASS: 0.12,
+      SCALE_BASE_FACTOR: 0.32,
+    },
+  },
+  RECORDING: {
+    ENABLED: true,
+    MIME_CANDIDATES: [
+      "video/webm;codecs=vp9",
+      "video/webm;codecs=vp8",
+      "video/webm",
+    ],
+    FPS: 60,
+  },
+};
+const S = Math.sin;
+const C = Math.cos;
+const PI = Math.PI;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+function hslToRgb(hDeg, s01, l01) {
+  const h = ((hDeg % 360) + 360) % 360 / 360;
+  const q = l01 < 0.5 ? l01 * (1 + s01) : l01 + s01 - l01 * s01;
+  const p = 2 * l01 - q;
+  const hue2rgb = (t) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1/6) return p + (q - p) * 6 * t;
+    if (t < 1/2) return q;
+    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+    return p;
+  };
+  const r = hue2rgb(h + 1/3);
+  const g = hue2rgb(h);
+  const b = hue2rgb(h - 1/3);
+  return [(r * 255) | 0, (g * 255) | 0, (b * 255) | 0];
+}
+class RingBuffer {
+  constructor(capacity) {
+    this.capacity = capacity;
+    this.data = new Array(capacity);
+    this.size = 0;
+    this.write = 0;
+  }
+  push(v) {
+    this.data[this.write] = v;
+    this.write = (this.write + 1) % this.capacity;
+    this.size = Math.min(this.size + 1, this.capacity);
+  }
+  toArray() {
+    const out = [];
+    for (let i = 0; i < this.size; i++) {
+      const idx = (this.write - this.size + i + this.capacity) % this.capacity;
+      out.push(this.data[idx]);
+    }
+    return out;
+  }
+  mean() {
+    if (!this.size) return 0;
+    let s = 0;
+    for (let i = 0; i < this.size; i++) s += this.data[i] ?? 0;
+    return s / this.size;
+  }
+  std() {
+    if (this.size < 2) return 0;
+    const m = this.mean();
+    let v = 0;
+    for (let i = 0; i < this.size; i++) {
+      const d = (this.data[i] ?? 0) - m;
+      v += d * d;
+    }
+    return Math.sqrt(v / (this.size - 1));
+  }
+}
+class Renderer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext("2d", { alpha: false });
+    this.vw = 0;
+    this.vh = 0;
+    this.dpr = 1;
+    this._backgroundDrawn = false;
+  }
+  resize() {
+    this.dpr = Math.min(CONFIG.RENDER.DPR_MAX, Math.max(1, window.devicePixelRatio || 1));
+    this.vw = window.innerWidth;
+    this.vh = window.innerHeight - document.getElementById("bar").offsetHeight;
+    this.canvas.style.width = this.vw + "px";
+    this.canvas.style.height = this.vh + "px";
+    this.canvas.width = (this.vw * this.dpr) | 0;
+    this.canvas.height = (this.vh * this.dpr) | 0;
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this._backgroundDrawn = false;
+  }
+  beginFrame() {
+    const ctx = this.ctx;
+    const [r, g, b] = CONFIG.RENDER.BACKGROUND_RGB;
+    if (!this._backgroundDrawn && CONFIG.RENDER.CLEAR_ON_FIRST_FRAME) {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(0, 0, this.vw, this.vh);
+      this._backgroundDrawn = true;
+    }
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = `rgba(${r},${g},${b},${CONFIG.RENDER.TRAIL_ALPHA})`;
+    ctx.fillRect(0, 0, this.vw, this.vh);
+    ctx.globalCompositeOperation = CONFIG.RENDER.ADDITIVE_BLEND_MODE;
+  }
+}
+class AudioEngine {
+  constructor() {
+    this.audioCtx = null;
+    this.sourceNode = null;
+    this.mediaSource = null;
+    this.outputGain = null;
+    this.masterAnalyser = null;
+    this.leftAnalyser = null;
+    this.rightAnalyser = null;
+    this.masterBins = null;
+    this.leftBins = null;
+    this.rightBins = null;
+    this.mode = "idle";
+    this.micStream = null;
+    this.audioTimeOffset = 0;
+    this._offsetInitialized = false;
+  }
+  ensureContext() {
+    if (this.audioCtx) return this.audioCtx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) throw new Error("Web Audio is not supported in this browser.");
+    this.audioCtx = new AC();
+    this.audioCtx.resume?.();
+    return this.audioCtx;
+  }
+  _buildAnalysers() {
+    const ac = this.audioCtx;
+    this.masterAnalyser = ac.createAnalyser();
+    this.masterAnalyser.fftSize = CONFIG.AUDIO.MASTER_FFT_SIZE;
+    this.masterAnalyser.smoothingTimeConstant = CONFIG.AUDIO.SMOOTHING_TIME_CONSTANT;
+    this.masterBins = new Uint8Array(this.masterAnalyser.frequencyBinCount);
+    const splitter = ac.createChannelSplitter(2);
+    this.leftAnalyser = ac.createAnalyser();
+    this.rightAnalyser = ac.createAnalyser();
+    this.leftAnalyser.fftSize = CONFIG.AUDIO.CHANNEL_FFT_SIZE;
+    this.rightAnalyser.fftSize = CONFIG.AUDIO.CHANNEL_FFT_SIZE;
+    this.leftAnalyser.smoothingTimeConstant = CONFIG.AUDIO.SMOOTHING_TIME_CONSTANT;
+    this.rightAnalyser.smoothingTimeConstant = CONFIG.AUDIO.SMOOTHING_TIME_CONSTANT;
+    this.leftBins = new Uint8Array(this.leftAnalyser.frequencyBinCount);
+    this.rightBins = new Uint8Array(this.rightAnalyser.frequencyBinCount);
+    this.sourceNode.connect(this.masterAnalyser);
+    this.sourceNode.connect(splitter);
+    splitter.connect(this.leftAnalyser, 0);
+    splitter.connect(this.rightAnalyser, 1);
+  }
+  _resetTimeOffset(visualTimeSec) {
+    this.audioTimeOffset = visualTimeSec - (this.audioCtx?.currentTime || 0);
+    this._offsetInitialized = true;
+  }
+  stop() {
+    try { this.sourceNode?.disconnect(); } catch {}
+    try { this.outputGain?.disconnect(); } catch {}
+    if (this.micStream) {
+      try { this.micStream.getTracks().forEach(tr => tr.stop()); } catch {}
+      this.micStream = null;
+    }
+    this.sourceNode = null;
+    this.masterAnalyser = this.leftAnalyser = this.rightAnalyser = null;
+    this.outputGain = null;
+    this.mode = "idle";
+    this._offsetInitialized = false;
+  }
+  async startMic(visualTimeSec) {
+    if (!window.isSecureContext) {
+      throw new Error("Microphone requires a secure origin. Use https:// or http://localhost>");
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("getUserMedia() is not available.");
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const ac = this.ensureContext();
+    this.stop();
+    this.micStream = stream;
+    this.sourceNode = ac.createMediaStreamSource(stream);
+    this._buildAnalysers();
+    this.mode = "mic";
+    this._resetTimeOffset(visualTimeSec);
+  }
+  async startFile(audioEl, file, visualTimeSec) {
+    const ac = this.ensureContext();
+    this.stop();
+    if (audioEl._objUrl) {
+      try { URL.revokeObjectURL(audioEl._objUrl); } catch {}
+    }
+    audioEl._objUrl = URL.createObjectURL(file);
+    audioEl.src = audioEl._objUrl;
+    await audioEl.play();
+    if (!this.mediaSource) this.mediaSource = ac.createMediaElementSource(audioEl);
+    this.sourceNode = this.mediaSource;
+    this.outputGain = ac.createGain();
+    this.outputGain.gain.value = CONFIG.AUDIO.OUTPUT_GAIN;
+    this.sourceNode.connect(this.outputGain);
+    this.outputGain.connect(ac.destination);
+    this._buildAnalysers();
+    this.mode = "file";
+    this._resetTimeOffset(visualTimeSec);
+  }
+  sample() {
+    if (!this.masterAnalyser || !this.leftAnalyser || !this.rightAnalyser) return null;
+    this.masterAnalyser.getByteFrequencyData(this.masterBins);
+    this.leftAnalyser.getByteFrequencyData(this.leftBins);
+    this.rightAnalyser.getByteFrequencyData(this.rightBins);
+    return {
+      master: this.masterBins,
+      left: this.leftBins,
+      right: this.rightBins,
+      sampleRate: this.audioCtx.sampleRate,
+    };
+  }
+  timeSeconds(visualTimeSec) {
+    if (!this.audioCtx || !this._offsetInitialized) return visualTimeSec;
+    return this.audioCtx.currentTime + this.audioTimeOffset;
+  }
+}
+class FeatureExtractor {
+  constructor() {
+    this.prevMaster = null;
+    this.fluxHist = new RingBuffer(CONFIG.AUDIO.ONSET.FLUX_HISTORY_FRAMES);
+    this.lastOnsetMs = 0;
+    this.intervalsMs = new RingBuffer(CONFIG.AUDIO.BPM.INTERVAL_HISTORY);
+    this.bpm = CONFIG.AUDIO.IDLE_DEMO.BASE_BPM;
+    this.bandMap = null;
+  }
+  _buildBandMap(binCount, sampleRate) {
+    const nyquist = sampleRate / 2;
+    const binHz = nyquist / binCount;
+    const map = CONFIG.AUDIO.BANDS_HZ.map(b => {
+      const from = clamp(b.from, 0, nyquist);
+      const to = clamp(b.to, 0, nyquist);
+      const start = clamp(Math.floor(from / binHz), 0, binCount - 1);
+      const end = clamp(Math.ceil(to / binHz), start + 1, binCount);
+      return { name: b.name, start, end, fromHz: from, toHz: to };
+    });
+    return { binHz, nyquist, map };
+  }
+  _bandEnergy(normBins, start, end) {
+    let sum = 0;
+    const n = Math.max(1, end - start);
+    for (let i = start; i < end; i++) sum += normBins[i];
+    return sum / n;
+  }
+  _spectralCentroid(normBins, binHz) {
+    let num = 0;
+    let den = 0;
+    for (let i = 0; i < normBins.length; i++) {
+      const m = normBins[i];
+      const f = i * binHz;
+      num += f * m;
+      den += m;
+    }
+    return den > 0 ? num / den : 0;
+  }
+  _spectralFlux(normBins, prevNormBins) {
+    if (!prevNormBins) return 0;
+    let flux = 0;
+    const n = Math.min(normBins.length, prevNormBins.length);
+    for (let i = 0; i < n; i++) {
+      const d = normBins[i] - prevNormBins[i];
+      if (d > 0) flux += d;
+    }
+    return flux;
+  }
+  _detectOnset(flux, tMs) {
+    this.fluxHist.push(flux);
+    const mean = this.fluxHist.mean();
+    const std = this.fluxHist.std();
+    const threshold = mean + std * CONFIG.AUDIO.ONSET.THRESHOLD_MULTIPLIER;
+    const refractoryOk = (tMs - this.lastOnsetMs) > CONFIG.AUDIO.ONSET.REFRACTORY_MS;
+    const onset = refractoryOk && flux > threshold;
+    if (onset) {
+      if (this.lastOnsetMs > 0) this.intervalsMs.push(tMs - this.lastOnsetMs);
+      this.lastOnsetMs = tMs;
+    }
+    return { onset, threshold, mean, std };
+  }
+  _updateBpm() {
+    const arr = this.intervalsMs.toArray().filter(x => x > 0);
+    if (arr.length < 2) return this.bpm;
+    arr.sort((a,b)=>a-b);
+    const mid = (arr.length / 2) | 0;
+    const medMs = arr.length % 2 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
+    const detected = clamp(60000 / medMs, CONFIG.AUDIO.BPM.MIN, CONFIG.AUDIO.BPM.MAX);
+    this.bpm = this.bpm * (1 - CONFIG.AUDIO.BPM.SMOOTHING) + detected * CONFIG.AUDIO.BPM.SMOOTHING;
+    return this.bpm;
+  }
+  sample(audioSample, visualTimeSec, tMs) {
+    if (!audioSample) {
+      if (!CONFIG.AUDIO.IDLE_DEMO.ENABLED) {
+        return {
+          bands: {}, bass: 0, brightness: 0, flux: 0,
+          onset: false, bpm: this.bpm,
+          stereo: { L: 0, R: 0, mid: 0, side: 0, lrDiff: 0 },
+        };
+      }
+      const t = visualTimeSec;
+      const wob = CONFIG.AUDIO.IDLE_DEMO.WOBBLE_HZ;
+      const bass = clamp(0.14 + 0.10 * S(t * (wob * 2 * PI)) + 0.05 * S(t * 2.2), 0, 1);
+      const bright = clamp(0.10 + 0.08 * S(t * 1.1 + 1.3), 0, 1);
+      const flux = clamp(0.08 + 0.05 * S(t * 3.0 + 0.7), 0, 1);
+      const onset = S(t * (this.bpm / 60) * 2 * PI) > 0.985;
+      const base = CONFIG.AUDIO.IDLE_DEMO.BASE_BPM;
+      this.bpm = base + 10 * S(t * wob);
+      return {
+        bands: { sub: bass*0.6, bass, lowMid: bass*0.5, highMid: bright*0.7, treble: bright },
+        bass,
+        brightness: bright,
+        flux,
+        onset,
+        bpm: this.bpm,
+        stereo: { L: bass*0.9, R: bass*0.9, mid: bass, side: 0, lrDiff: 0 },
+      };
+    }
+    const norm = (bins) => {
+      const out = new Float32Array(bins.length);
+      for (let i = 0; i < bins.length; i++) out[i] = bins[i] / 255;
+      return out;
+    };
+    const master = norm(audioSample.master);
+    const left = norm(audioSample.left);
+    const right = norm(audioSample.right);
+    if (!this.bandMap || this.bandMap.map[0].end > master.length) {
+      this.bandMap = this._buildBandMap(master.length, audioSample.sampleRate);
+    }
+    const bands = {};
+    for (const b of this.bandMap.map) {
+      bands[b.name] = this._bandEnergy(master, b.start, b.end);
+    }
+    const bass = bands.bass ?? 0;
+    const centroidHz = this._spectralCentroid(master, this.bandMap.binHz);
+    const brightness = clamp(centroidHz / this.bandMap.nyquist, 0, 1);
+    const flux = this._spectralFlux(master, this.prevMaster);
+    this.prevMaster = master;
+    const onsetInfo = this._detectOnset(flux, tMs);
+    const bpm = this._updateBpm();
+    const L = this._bandEnergy(left, 0, left.length);
+    const R = this._bandEnergy(right, 0, right.length);
+    const mid = (L + R) / 2;
+    const side = Math.abs(L - R) / 2;
+    const lrDiff = clamp(L - R, -1, 1);
+    return {
+      bands, bass, brightness, flux,
+      onset: onsetInfo.onset,
+      bpm,
+      stereo: { L, R, mid, side, lrDiff },
+      debug: { fluxMean: onsetInfo.mean, fluxStd: onsetInfo.std, fluxThreshold: onsetInfo.threshold },
+    };
+  }
+}
+class SphereSpiralsScene {
+  constructor(options = {}) {
+    this.colorSpace = options.colorSpace ?? CONFIG.SCENE.COLOR_SPACE;
+    this.hueOffsetDeg = options.hueOffsetDeg ?? CONFIG.SCENE.HUE_OFFSET_DEG;
+    this.colors = this._makeColors();
+    this.phase = new Float32Array(CONFIG.SCENE.QUAD_COUNT);
+    for (let k = 0; k < CONFIG.SCENE.QUAD_COUNT; k++) {
+      this.phase[k] = (k / CONFIG.SCENE.QUAD_COUNT) * CONFIG.SCENE.MOTION.PHASE_PER_AGENT;
+    }
+  }
+  _makeColors() {
+    const n = CONFIG.SCENE.QUAD_COUNT;
+    const alpha = CONFIG.SCENE.QUAD_ALPHA;
+    const colors = new Array(n);
+    if (this.colorSpace === "fixedHSL") {
+      for (let k = 0; k < n; k++) {
+        const hue = (this.hueOffsetDeg + (k * (360 / n))) % 360;
+        colors[k] = `hsla(${hue},100%,65%,${alpha})`;
+      }
+      return colors;
+    }
+    for (let k = 0; k < n; k++) {
+      const r = (128 + 127 * S(k * 2.4 + 0.0)) | 0;
+      const g = (128 + 127 * S(k * 2.4 + 2.1)) | 0;
+      const b = (128 + 127 * S(k * 2.4 + 4.2)) | 0;
+      colors[k] = `rgba(${r},${g},${b},${alpha})`;
+    }
+    return colors;
+  }
+  draw(ctx, vw, vh, tSec, features, overrideCx, overrideCy, bassOverride) {
+    const cx = overrideCx ?? (vw * CONFIG.SCENE.SPHERE.SCREEN_CENTER_X_FACTOR);
+    const cy = overrideCy ?? (vh * CONFIG.SCENE.SPHERE.SCREEN_CENTER_Y_FACTOR);
+    const bass = bassOverride ?? (features.bass ?? 0);
+    const brightness = features.brightness ?? 0;
+    const speed = CONFIG.SCENE.MOTION.LONGITUDE_SPEED * (1 + bass * CONFIG.SCENE.AUDIO_MAP.SPEED_FROM_BASS);
+    const latGain = CONFIG.SCENE.MOTION.LATITUDE_GAIN * (1 + brightness * CONFIG.SCENE.AUDIO_MAP.LAT_FROM_BRIGHTNESS);
+    const minDim = Math.min(vw, vh);
+    const sphereRadius = minDim * CONFIG.SCENE.AUDIO_MAP.SCALE_BASE_FACTOR * (1 + bass * CONFIG.SCENE.AUDIO_MAP.SCALE_FROM_BASS);
+    const depthA = CONFIG.SCENE.SPHERE.DEPTH_A;
+    const depthB = CONFIG.SCENE.SPHERE.DEPTH_B;
+    const n = CONFIG.SCENE.QUAD_COUNT;
+    for (let k = 0; k < n; k++) {
+      const p = this.phase[k];
+      const spiral = S(tSec * CONFIG.SCENE.MOTION.SPIRAL_SPEED * speed + k * CONFIG.SCENE.MOTION.SPIRAL_AGENT_PHASE_STEP) * CONFIG.SCENE.MOTION.SPIRAL_AMPLITUDE;
+      const a = tSec * speed + p + spiral;
+      const b = S(a * CONFIG.SCENE.MOTION.LATITUDE_WAVE + p) * latGain;
+      const X = C(b) * C(a);
+      const Y = S(b);
+      const Z = C(b) * S(a);
+      const d = Z * depthA + depthB;
+      const s = (CONFIG.SCENE.SIZE.BASE + bass * CONFIG.SCENE.SIZE.AUDIO_GAIN) / d;
+      ctx.fillStyle = this.colors[k];
+      ctx.fillRect(
+        cx + (X * sphereRadius) / d - s / 2,
+        cy + (Y * sphereRadius) / d - s / 2,
+        s,
+        s
+      );
+    }
+  }
+}
+class Recorder {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.recorder = null;
+    this.chunks = [];
+    this.isRecording = false;
+    this.mime = null;
+  }
+  _chooseMime() {
+    for (const m of CONFIG.RECORDING.MIME_CANDIDATES) {
+      if (MediaRecorder.isTypeSupported(m)) return m;
+    }
+    return "";
+  }
+  start() {
+    if (!CONFIG.RECORDING.ENABLED) throw new Error("Recording disabled by config.");
+    if (this.isRecording) return;
+    const stream = this.canvas.captureStream(CONFIG.RECORDING.FPS);
+    this.mime = this._chooseMime();
+    this.chunks = [];
+    this.recorder = new MediaRecorder(stream, this.mime ? { mimeType: this.mime } : undefined);
+    this.recorder.ondataavailable = (e) => { if (e.data && e.data.size) this.chunks.push(e.data); };
+    this.recorder.onstop = () => {
+      const blob = new Blob(this.chunks, { type: this.mime || "video/webm" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `stereo_spirals_${Date.now()}.webm`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    };
+    this.recorder.start();
+    this.isRecording = true;
+  }
+  stop() {
+    if (!this.isRecording) return;
+    this.recorder.stop();
+    this.isRecording = false;
+  }
+  toggle() {
+    this.isRecording ? this.stop() : this.start();
+  }
+}
+const canvas = document.getElementById("canvas");
+const panel = document.getElementById("panel");
+const statusEl = document.getElementById("status");
+const btnMic = document.getElementById("btnMic");
+const btnStopAudio = document.getElementById("btnStopAudio");
+const fileInput = document.getElementById("file");
+const btnRec = document.getElementById("btnRec");
+const btnShot = document.getElementById("btnShot");
+const audioEl = new Audio();
+const renderer = new Renderer(canvas);
+const audio = new AudioEngine();
+const extractor = new FeatureExtractor();
+const recorder = new Recorder(canvas);
+renderer.resize();
+window.addEventListener("resize", () => renderer.resize(), { passive: true });
+function setStatus(msg) { statusEl.textContent = msg; }
+function screenshot() {
+  const url = canvas.toDataURL("image/png");
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `stereo_spirals_${Date.now()}.png`;
+  a.click();
+}
+btnMic.addEventListener("click", async () => {
+  try {
+    setStatus("mic: requesting permission…");
+    await audio.startMic(visualTime);
+    setStatus("mic: active ✅");
+    btnStopAudio.disabled = false;
+  } catch (e) {
+    setStatus("mic: failed ❌ (see console)");
+    console.error(e);
+  }
+});
+btnStopAudio.addEventListener("click", () => {
+  audio.stop();
+  setStatus("idle (demo features)");
+  btnStopAudio.disabled = true;
+});
+fileInput.addEventListener("change", async (ev) => {
+  const file = ev.target.files?.[0];
+  if (!file) return;
+  try {
+    setStatus(`file: loading ${file.name}…`);
+    await audio.startFile(audioEl, file, visualTime);
+    setStatus(`file: playing ✅ (${file.name})`);
+    btnStopAudio.disabled = false;
+  } catch (e) {
+    setStatus("file: failed ❌ (see console)");
+    console.error(e);
+  } finally {
+    fileInput.value = "";
+  }
+});
+btnRec.addEventListener("click", () => {
+  try {
+    recorder.toggle();
+    btnRec.textContent = recorder.isRecording ? "Stop Rec" : "Start Rec";
+    setStatus(recorder.isRecording ? "recording… 🎥" : (audio.mode === "idle" ? "idle (demo features)" : `${audio.mode}: active ✅`));
+  } catch (e) {
+    console.error(e);
+    setStatus("recording failed ❌ (see console)");
+  }
+});
+btnShot.addEventListener("click", screenshot);
+const sceneCenter = new SphereSpiralsScene({ hueOffsetDeg: CONFIG.STEREO.CENTER_HUE_OFFSET, colorSpace: "fixedHSL" });
+const sceneLeft = new SphereSpiralsScene({ hueOffsetDeg: CONFIG.STEREO.LEFT_HUE_OFFSET, colorSpace: "fixedHSL" });
+const sceneRight = new SphereSpiralsScene({ hueOffsetDeg: CONFIG.STEREO.RIGHT_HUE_OFFSET, colorSpace: "fixedHSL" });
+let lastNow = performance.now();
+let visualTime = 0;
+let fpsAcc = 0, fpsFrames = 0, fps = 0;
+function tick(now) {
+  const dt = clamp((now - lastNow) / 1000, 0, 0.05);
+  lastNow = now;
+  visualTime += dt;
+  const tSec = audio.timeSeconds(visualTime);
+  const sample = audio.sample();
+  const feat = extractor.sample(sample, tSec, now);
+  renderer.beginFrame();
+  const mid = feat.stereo?.mid ?? 0;
+  const side = feat.stereo?.side ?? 0;
+  const width = side / (mid + CONFIG.STEREO.EPS);
+  const minDim = Math.min(renderer.vw, renderer.vh);
+  let separationRadius = width * CONFIG.STEREO.SEPARATION_FROM_WIDTH + (feat.bass ?? 0) * CONFIG.STEREO.SEPARATION_FROM_BASS;
+  separationRadius = clamp(separationRadius, CONFIG.STEREO.MIN_SEPARATION, minDim * CONFIG.STEREO.MAX_SEP_FRACTION_OF_MIN_DIM);
+  const orbitPhase = tSec * CONFIG.STEREO.ORBIT_PHASE_SPEED;
+  const cx = renderer.vw / 2;
+  const cy = renderer.vh / 2;
+  const centerBoost = CONFIG.STEREO.CENTER_BOOST_BASE + (1 - clamp(width, 0, 1)) * CONFIG.STEREO.CENTER_BOOST_FROM_MONO;
+  const centerEnergy = mid * centerBoost;
+  sceneCenter.draw(renderer.ctx, renderer.vw, renderer.vh, tSec, feat, cx, cy, centerEnergy);
+  const leftX = cx + C(orbitPhase) * separationRadius;
+  const leftY = cy + S(orbitPhase * CONFIG.STEREO.ORBIT_Y_FREQ) * separationRadius * CONFIG.STEREO.ORBIT_Y_RATIO;
+  const leftEnergy = feat.stereo?.L ?? 0;
+  sceneLeft.draw(renderer.ctx, renderer.vw, renderer.vh, tSec, feat, leftX, leftY, leftEnergy);
+  const rightX = cx + C(orbitPhase + PI) * separationRadius;
+  const rightY = cy + S(orbitPhase * CONFIG.STEREO.ORBIT_Y_FREQ + PI) * separationRadius * CONFIG.STEREO.ORBIT_Y_RATIO;
+  const rightEnergy = feat.stereo?.R ?? 0;
+  sceneRight.draw(renderer.ctx, renderer.vw, renderer.vh, tSec, feat, rightX, rightY, rightEnergy);
+  if (CONFIG.RENDER.HUD_ENABLED) {
+    fpsAcc += dt; fpsFrames++;
+    if (fpsAcc >= 0.5) { fps = fpsFrames / fpsAcc; fpsAcc = 0; fpsFrames = 0; }
+    const bass = (feat.bass ?? 0).toFixed(3);
+    const bright = (feat.brightness ?? 0).toFixed(3);
+    const bpm = (feat.bpm ?? 0).toFixed(1);
+    const sep = separationRadius.toFixed(0);
+    const mode = audio.mode;
+    panel.textContent =
+`mode: ${mode}
+fps: ${fps.toFixed(1)} (target ${CONFIG.RENDER.TARGET_FPS})
+bpm: ${bpm} onset: ${feat.onset ? "YES" : "no"}
+bass: ${bass} brightness: ${bright}
+stereo mid/side: ${mid.toFixed(3)} / ${side.toFixed(3)}
+width: ${width.toFixed(3)}
+separation: ${sep}px
+trailAlpha: ${CONFIG.RENDER.TRAIL_ALPHA}`;
+  } else {
+    panel.textContent = "";
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+setStatus("idle (demo features). Use Mic (secure context) or Audio File.");
+</script>
+</body>
+</html>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="description" content="v0.0.1 — Minimal single-file sphere tracer (no audio, no UI). One particle on one sphere." />
+  <meta name="keywords" content="canvas, generative art, sphere, single file, offline" />
+  <meta name="author" content="Christopher 'Kisuul' Lohman" />
+  <title>Sphere Tracer v0.0.1 (Minimal)</title>
+
+  <style>
+    /* ===== Minimal, predictable styling ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #000; color: #fff; font-family: system-ui, sans-serif; }
+    main { height: 100%; width: 100%; overflow: hidden; position: relative; }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none; /* TODO(v2.x): enable gestures (swipe/pinch) */
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <canvas id="c"></canvas>
+  </main>
+
+  <script type="module">
+  (() => {
+    /* =====================================================================
+      Sphere Tracer v0.0.1 — "Blown-out Dwitter" baseline
+      - Single file, offline, no dependencies.
+      - No audio, no UI.
+      - One white particle traces the surface of a sphere (projected to 2D).
+
+      STYLE RULES (kept consistent with later versions):
+      - No magic numbers: tunables live in DEFAULTS / PARAMS.
+      - DEFAULTS is never mutated.
+      - PARAMS is runtime-tweakable (even if we don't expose UI yet).
+      - Mutable runtime state is centralized in `state`.
+      - Code is chunked by concern (sizing, update, draw, loop).
+
+      TODO(v2.2+): expand this scaffold back into:
+      - WebAudio analysers + microphone/file inputs
+      - Multi-orb master+stereo-pairs model
+      - Controls panel + presets + share hash
+      - Touch + keyboard shortcuts + debug FPS
+    ====================================================================== */
+
+    // ===== Math aliases (explicit) =====
+    const S = Math.sin;
+    const C = Math.cos;
+    const TAU = Math.PI * 2;
+
+    /* =====================================================================
+      1) DEFAULTS (single source of truth for tunables)
+    ====================================================================== */
+    const DEFAULTS = {
+      canvas: {
+        context: {
+          alpha: false,          // opaque canvas (often faster)
+          desynchronized: true,  // hint: reduce latency on some browsers
+        },
+        background: "#000000",
+        trailAlpha: 0.06,        // 0 = hard clear, higher = longer trails
+        compositeDraw: "source-over",
+      },
+
+      time: {
+        dtClampSeconds: 0.05,    // prevent giant dt leaps on tab resume
+        speed: 0.65,             // global motion speed scalar
+      },
+
+      sphere: {
+        // Sphere lives in a virtual 3D space; we project onto the 2D canvas.
+        radius: 1.0,             // unit sphere (we scale later)
+        spinA: 0.9,              // controls longitudinal motion
+        spinB: 0.7,              // controls latitudinal motion
+        wobble: 0.25,            // introduces non-uniform motion (still on surface)
+      },
+
+      camera: {
+        // Simple perspective projection: screen = (x/z, y/z) * scale
+        zBias: 2.2,              // pushes sphere "in front" of camera to avoid divide-by-zero
+        scalePx: 320,            // base pixel scale for projection (then size-fit)
+      },
+
+      particle: {
+        sizePx: 2.0,             // particle draw size in pixels
+        color: "#ffffff",
+      },
+
+      fit: {
+        // Fit projection to view; this keeps it sane across screen sizes.
+        marginPx: 40,
+      },
+
+      // TODO(v2.2): audio: { ... analysers, smoothing, bands ... }
+      // TODO(v2.2): orbs: { master + stereo pairs + ring config ... }
+      // TODO(v2.2): ui: { overlay, controls, share, help ... }
+      // TODO(v2.2): touch: { swipe/pinch scaling ... }
+      // TODO(v2.2): keyboard: { pause/fullscreen/reset/debug/share/help ... }
+      // TODO(v2.2): performance: { FPS sampling ... }
+    };
+
+    // Deep copy defaults into runtime parameters
+    const PARAMS = JSON.parse(JSON.stringify(DEFAULTS));
+
+    /* =====================================================================
+      2) DOM / Canvas
+    ====================================================================== */
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d", PARAMS.canvas.context);
+
+    /* =====================================================================
+      3) State (all mutable runtime state)
+    ====================================================================== */
+    const state = {
+      // View sizing
+      vw: 0, vh: 0, dpr: 1,
+
+      // Time
+      time: 0,
+      lastNow: performance.now(),
+
+      // Fit scaling (computed from view size)
+      fitScale: 1.0,
+
+      // Particle position (projected)
+      lastX: null,
+      lastY: null,
+    };
+
+    /* =====================================================================
+      4) Utilities
+    ====================================================================== */
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    /* =====================================================================
+      5) Canvas sizing + fit
+    ====================================================================== */
+    function resize() {
+      state.dpr = Math.max(1, window.devicePixelRatio || 1);
+      state.vw = window.innerWidth;
+      state.vh = window.innerHeight;
+
+      canvas.style.width = `${state.vw}px`;
+      canvas.style.height = `${state.vh}px`;
+      canvas.width = Math.floor(state.vw * state.dpr);
+      canvas.height = Math.floor(state.vh * state.dpr);
+
+      ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+
+      // Fit projection scale so the sphere is comfortably inside the viewport.
+      // We want the projected radius ~ min(vw,vh)/2 - margin.
+      const minDim = Math.min(state.vw, state.vh);
+      const usable = Math.max(1, (minDim * 0.5) - PARAMS.fit.marginPx);
+      state.fitScale = usable / PARAMS.camera.scalePx;
+
+      // Hard clear on resize
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = PARAMS.canvas.background;
+      ctx.fillRect(0, 0, state.vw, state.vh);
+
+      state.lastX = null;
+      state.lastY = null;
+    }
+    window.addEventListener("resize", resize, { passive: true });
+    resize();
+
+    /* =====================================================================
+      6) Model: point on sphere surface
+      - We parametrize the sphere by two angles (theta, phi).
+      - theta: longitude [0..2π)
+      - phi: latitude  [-π/2..π/2]
+      - Convert to 3D:
+          x = cos(phi)*cos(theta)
+          y = sin(phi)
+          z = cos(phi)*sin(theta)
+    ====================================================================== */
+    function spherePoint(t) {
+      const sp = PARAMS.sphere;
+
+      // Base angles advance over time (two frequencies makes a nice non-repeating-ish loop)
+      const theta = t * sp.spinA;
+      const phiBase = S(t * sp.spinB) * (TAU * 0.125); // small latitude swing
+
+      // Wobble: modulate latitude a bit but keep it bounded
+      const phi = phiBase + sp.wobble * S(t * (sp.spinB + 0.31)) * (TAU * 0.06);
+
+      const cphi = C(phi);
+      const x = cphi * C(theta);
+      const y = S(phi);
+      const z = cphi * S(theta);
+
+      // Unit sphere point
+      return { x, y, z };
+    }
+
+    /* =====================================================================
+      7) Projection: 3D -> 2D
+      - Very simple perspective:
+          px = cx + (x / (z + zBias)) * scale
+          py = cy + (y / (z + zBias)) * scale
+    ====================================================================== */
+    function project(p3) {
+      const cam = PARAMS.camera;
+
+      const z = p3.z + cam.zBias;
+      const inv = 1 / Math.max(0.0001, z);
+
+      const scale = cam.scalePx * state.fitScale;
+
+      const cx = state.vw * 0.5;
+      const cy = state.vh * 0.5;
+
+      const px = cx + p3.x * scale * inv;
+      const py = cy + p3.y * scale * inv;
+
+      return { x: px, y: py, z };
+    }
+
+    /* =====================================================================
+      8) Drawing
+      - We do a gentle trail fade each frame.
+      - Then draw the particle as a tiny white square (fast & crisp).
+    ====================================================================== */
+    function beginFrame() {
+      ctx.globalCompositeOperation = PARAMS.canvas.compositeDraw;
+
+      // Trail fade: draw a translucent black rect over the whole canvas
+      const a = clamp(PARAMS.canvas.trailAlpha, 0, 1);
+      ctx.fillStyle = `rgba(0,0,0,${a})`;
+      ctx.fillRect(0, 0, state.vw, state.vh);
+    }
+
+    function drawParticle(x, y) {
+      const s = PARAMS.particle.sizePx;
+      ctx.fillStyle = PARAMS.particle.color;
+      ctx.fillRect(x - s * 0.5, y - s * 0.5, s, s);
+    }
+
+    // Optional: connect with a faint line (kept off by default for "one particle" purity)
+    // TODO(v0.0.2?): add an optional line mode toggle or parameter.
+    function maybeDrawLink(x, y) {
+      // Intentionally no-op.
+      // TODO(v2.2): replace with multi-orb particle field drawing, per-orb energy shaping.
+      void x; void y;
+    }
+
+    /* =====================================================================
+      9) Main loop
+    ====================================================================== */
+    function tick(nowMs) {
+      const dt = Math.min(PARAMS.time.dtClampSeconds, (nowMs - state.lastNow) / 1000);
+      state.lastNow = nowMs;
+      state.time += dt * PARAMS.time.speed;
+
+      beginFrame();
+
+      const p3 = spherePoint(state.time);
+      const p2 = project(p3);
+
+      // Draw the one particle
+      drawParticle(p2.x, p2.y);
+
+      // Optional connective mark (disabled)
+      maybeDrawLink(p2.x, p2.y);
+
+      // Remember for future expansion
+      state.lastX = p2.x;
+      state.lastY = p2.y;
+
+      requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame((t) => {
+      state.lastNow = t;
+      tick(t);
+    });
+
+    /* =====================================================================
+      10) Expansion TODO map (how v0.0.1 becomes v2.2)
+      - Keep this as the “breadcrumbs” for repo readers.
+
+      TODO(v1.x): multi-particle field
+        - particleCount param (derived from a synthetic driver first)
+        - per-particle phase offsets
+        - depth + size scaling like the later spiral model
+
+      TODO(v2.0): Web Audio scaffolding
+        - ensureAudioContext()
+        - analyser nodes for master/left/right
+        - energy smoothing
+        - band slicing
+
+      TODO(v2.1): portable onboarding UI
+        - overlay panel with mic/file entry points
+        - status area for error messages
+        - audio element for file mode
+
+      TODO(v2.2): orb grammar (Master + Stereo Pair Rings)
+        - master orb at center: mono/sum spectrum
+        - pairs in 2s: Left+Right
+        - ring radius increases with energy
+        - preset share/import (hash)
+        - touch & keyboard shortcuts
+        - debug/FPS
+    ====================================================================== */
+  })();
+  </script>
+</body>
+</html>

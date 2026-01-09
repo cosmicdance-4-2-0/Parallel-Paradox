@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="description" content="Stereo audio-reactive generative art visualizer (mic or audio file) — single-file, offline-capable" />
+  <meta name="keywords" content="audio visualizer, generative art, web audio, canvas, single file" />
+  <meta name="author" content="Christopher 'Kisuul' Lohman" />
+  <title>Stereo Audio-Reactive Visualizer v2.3 (Mood Presets)</title>
+
+  <style>
+    /* ===== Minimal, readable UI ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: system-ui, sans-serif; background: #000; color: #fff; }
+    #app { display: grid; grid-template-rows: auto 1fr auto; height: 100%; }
+    header, footer { padding: 1rem; text-align: center; }
+    main { overflow: hidden; position: relative; }
+    #render-target {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none; /* IMPORTANT: allow custom touch gestures without browser scrolling/zooming */
+    }
+
+    /* ===== Overlay (onboarding / permissions) ===== */
+    #dom-target {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      background: radial-gradient(circle at center, rgba(0,0,0,0.55), rgba(0,0,0,0.85));
+      padding: 2rem;
+      transition: opacity 0.35s ease; /* keep in sync with DEFAULTS.ui.overlayTransitionMs */
+      pointer-events: auto;
+      opacity: 1;
+    }
+    #panel {
+      max-width: 760px;
+      width: min(760px, 92vw);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 1.25rem;
+      background: rgba(0,0,0,0.55);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    #panel h2 { font-size: 1.25rem; margin-bottom: 0.6rem; }
+    #panel p { line-height: 1.35; opacity: 0.95; }
+    #panel .small { opacity: 0.8; font-size: 0.92rem; margin-top: 0.6rem; }
+    #row { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-top: 0.9rem; }
+    button, .filelike, select {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 10px;
+      padding: 0.65rem 0.85rem;
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 650;
+      letter-spacing: 0.2px;
+    }
+    select { cursor: default; }
+    button:hover, .filelike:hover { background: rgba(255,255,255,0.10); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    input[type="file"] { display: none; }
+
+    #status {
+      margin-top: 0.8rem;
+      padding: 0.75rem;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.35);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.92rem;
+      white-space: pre-wrap;
+    }
+
+    /* ===== Optional audio element (file mode controls) ===== */
+    #player {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 1rem;
+      width: min(760px, 92vw);
+      opacity: 0.92;
+      display: none;
+      pointer-events: auto;
+      z-index: 5;
+    }
+
+    /* ===== Controls panel (always available) ===== */
+    #controls {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: min(360px, 92vw);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 12px;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(8px);
+      padding: .55rem .7rem;
+      pointer-events: auto;
+      z-index: 6;
+    }
+    #controls summary { cursor: pointer; font-weight: 750; user-select: none; }
+    .ctl-grid { display: grid; gap: .55rem; margin-top: .65rem; }
+    .ctl {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: .5rem;
+      align-items: center;
+      font-size: .92rem;
+      opacity: .95;
+    }
+    .ctl input[type="range"] { grid-column: 1 / -1; width: 100%; }
+    .ctl select { grid-column: 1 / -1; width: 100%; }
+    .ctl output {
+      opacity: .85;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: .9rem;
+    }
+    .ctl small { grid-column: 1 / -1; opacity: .75; font-size: .82rem; line-height: 1.2; }
+    .ctl-row { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.2rem; }
+    .ctl-row button { padding: .45rem .65rem; border-radius: 10px; font-weight: 650; }
+
+    /* ===== FPS counter (debug mode) ===== */
+    #fps {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      padding: .5rem .7rem;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.7);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: .85rem;
+      opacity: 0.85;
+      pointer-events: none;
+      z-index: 7;
+      display: none;
+    }
+
+    /* ===== Keyboard help overlay ===== */
+    #help {
+      position: absolute;
+      bottom: 1rem;
+      left: 1rem;
+      max-width: min(360px, 92vw);
+      padding: .7rem .85rem;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.75);
+      border: 1px solid rgba(255,255,255,0.14);
+      font-size: .85rem;
+      line-height: 1.5;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      z-index: 8;
+    }
+    #help.show { opacity: 0.92; }
+    #help strong { color: #4af; font-weight: 650; }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <header>
+      <h1>Stereo Audio Reactive Visualizer</h1>
+    </header>
+
+    <main>
+      <canvas id="render-target"></canvas>
+
+      <div id="fps">FPS: --</div>
+
+      <div id="help">
+        <strong>SPACE</strong> pause visuals • <strong>F</strong> fullscreen • <strong>R</strong> reset<br>
+        <strong>D</strong> debug • <strong>S</strong> share preset • <strong>?</strong> help
+      </div>
+
+      <details id="controls" open>
+        <summary>⚙ Controls</summary>
+        <div class="ctl-grid">
+          <div class="ctl">
+            <label for="ctl-mood">Mood</label>
+            <output id="ctl-mood-v"></output>
+            <select id="ctl-mood">
+              <option value="Rainbow Disco">Rainbow Disco</option>
+              <option value="Instrument Disco">Instrument Disco</option>
+            </select>
+            <small>
+              Mood is a preset for render behavior. Master + bands are configured independently.
+              (Both current moods keep the Master behavior.)
+            </small>
+          </div>
+
+          <div class="ctl">
+            <label for="ctl-orbs">Orbs</label>
+            <output id="ctl-orbs-v"></output>
+            <input id="ctl-orbs" type="range" min="1" max="9" step="2" value="3" />
+            <small>
+              Always odd: <b>1</b> = Master only. <b>3</b> = Master + 1 stereo pair. <b>5</b> = Master + 2 pairs… (stays stereo).
+            </small>
+          </div>
+
+          <div class="ctl">
+            <label for="ctl-pmin">Particles min</label>
+            <output id="ctl-pmin-v"></output>
+            <input id="ctl-pmin" type="range" min="4" max="240" step="1" value="12" />
+          </div>
+
+          <div class="ctl">
+            <label for="ctl-pmax">Particles max</label>
+            <output id="ctl-pmax-v"></output>
+            <input id="ctl-pmax" type="range" min="8" max="320" step="1" value="64" />
+            <small>Particle count is derived from BPM-ish detection, then clamped by these bounds.</small>
+          </div>
+
+          <div class="ctl">
+            <label for="ctl-trail">Trail</label>
+            <output id="ctl-trail-v"></output>
+            <input id="ctl-trail" type="range" min="0" max="0.25" step="0.01" value="0.08" />
+            <small>0 = no trails (hard clear). Higher = longer persistence.</small>
+          </div>
+
+          <div class="ctl">
+            <label for="ctl-orbit">Orbit spacing</label>
+            <output id="ctl-orbit-v"></output>
+            <input id="ctl-orbit" type="range" min="30" max="260" step="1" value="120" />
+            <small>Base distance between band-pair “lanes.” Each band pair sits on its own ring.</small>
+          </div>
+
+          <div class="ctl">
+            <label for="ctl-orbitE">Orbit energy</label>
+            <output id="ctl-orbitE-v"></output>
+            <input id="ctl-orbitE" type="range" min="0" max="620" step="1" value="220" />
+            <small>How much band energy inflates its orbit radius.</small>
+          </div>
+
+          <div class="ctl-row">
+            <button id="btn-stop" type="button">Stop Audio</button>
+            <button id="btn-overlay" type="button">Show Overlay</button>
+            <button id="btn-share" type="button">Share Preset</button>
+          </div>
+        </div>
+      </details>
+
+      <div id="dom-target">
+        <div id="panel">
+          <h2>Enable Audio Reactivity</h2>
+          <p>
+            Microphone mode <b>cannot</b> work on <code>file://</code> due to browser security rules.
+            Audio File mode <b>does</b> work offline and stays single-file portable.
+          </p>
+
+          <div id="row">
+            <button id="btn-mic" type="button">Enable Microphone</button>
+            <label class="filelike" for="file-input">Use Audio File</label>
+            <input id="file-input" type="file" accept="audio/*" />
+            <button id="btn-hide" type="button">Hide Overlay</button>
+          </div>
+
+          <div class="small">
+            Headphones recommended. On desktop: serving from <b>http://localhost</b> counts as "secure enough" for mic.
+            Press <b>?</b> for keyboard shortcuts.
+          </div>
+
+          <div id="status">Status: idle (rendering demo mode)</div>
+        </div>
+      </div>
+
+      <audio id="player" controls></audio>
+    </main>
+
+    <footer>
+      <p>&copy; Christopher "Kisuul" Lohman — Stereo Visualizer v2.3 (Mood Presets)</p>
+    </footer>
+  </div>
+
+  <script type="module">
+  (() => {
+    /* =====================================================================
+      v2.3 GOALS
+      - Single-file, minimal, but modular.
+      - No magic numbers: tunables live in DEFAULTS/PARAMS (and presets registry).
+      - Orb grammar:
+          * Master orb is always centered and largest (mono / sum spectrum).
+          * If >1 orb, we step in stereo pairs: totalOrbs is always odd: 1,3,5,7,9...
+          * Band orbs are L/R for each band pair (stays stereo even at 5+).
+      - Mood system:
+          * Mood = one preset for the renderer.
+          * Master + band behaviors are configured separately.
+          * Both initial moods keep the current Master behavior.
+      - Roadmap:
+          TODO(v2.4): Import presets (file/paste/URL) with validation + merge rules.
+          TODO(v2.5): In-app preset editor (gradients, per-band rules, save/export).
+    ====================================================================== */
+
+    // ===== Math aliases =====
+    const S = Math.sin;
+    const C = Math.cos;
+    const TAU = Math.PI * 2;
+
+    /* =====================================================================
+      1) DEFAULTS (single source of truth for tunables)
+    ====================================================================== */
+    const DEFAULTS = {
+      ui: {
+        overlayFadeMs: 350,
+        overlayTransitionMs: 350,
+        statusPrefix: "Status: ",
+        helpDisplayMs: 3000,
+        helpFirstShowDelayMs: 1000,
+        helpShownStorageKey: "visualizer-help-shown",
+      },
+
+      canvas: {
+        context: {
+          alpha: false,
+          desynchronized: true,
+        },
+        backgroundColor: "#000000",
+        trailAlpha: 0.08,
+        compositeDraw: "source-over",
+        compositeFX: "lighter",
+      },
+
+      time: {
+        dtClampSeconds: 0.05,
+      },
+
+      audio: {
+        gainToDestination: 0.90,
+        analyser: {
+          masterFFTSize: 1024,  // more resolution for “master total spectrum”
+          sideFFTSize: 512,
+        },
+
+        // Bands are defined in normalized fractions over analyser bin arrays.
+        // Interpretable baseline: 3 bands (low/mid/high). More can be added later.
+        bands: [
+          { name: "Band 1 (Low)",  lo: 0.00, hi: 0.12 },
+          { name: "Band 2 (Mid)",  lo: 0.12, hi: 0.40 },
+          { name: "Band 3 (High)", lo: 0.40, hi: 1.00 },
+        ],
+
+        energySmoothing: 0.88,
+
+        errorRecovery: {
+          maxErrorsInWindow: 3,
+          errorWindowMs: 5000,
+        },
+      },
+
+      bpm: {
+        historySize: 180,
+        peakFactor: 1.35,
+        refractoryMs: 260,
+        minBpm: 20,
+        maxBpm: 600,
+        emaAlpha: 0.10,
+        idleBase: 120,
+        idleAmp: 25,
+        idleRate: 0.35,
+      },
+
+      particles: {
+        bpmDivisor: 3,
+        min: 12,
+        max: 64,
+      },
+
+      orbs: {
+        // UI drives total count; we enforce odd counts.
+        total: 3,          // 1..9 odd only
+        maxTotal: 9,
+
+        orbit: {
+          laneSpacing: 120, // UI-controlled via ctl-orbit
+          energyRadius: 220, // UI-controlled via ctl-orbitE
+          phaseRate: 0.35,
+          yPhaseMultiplier: 1.12,
+          yScale: 0.60,
+        },
+
+        stereoMix: {
+          // Adds some mono center energy to every orb so they “breathe together”
+          centerAdd: 0.10,
+        },
+      },
+
+      draw: {
+        baseScale: 420,
+        energyScale: 220,
+
+        sizeBase: 8,
+        sizeEnergy: 28,
+
+        zBias: 0.20,
+        depthScale: 0.80,
+        depthBias: 1.80,
+
+        spiral: {
+          timeBase: 0.75,
+          timeEnergy: 3.00,
+          perParticlePhase: 0.60,
+          ampBase: 2.00,
+          ampEnergy: 2.20,
+        },
+
+        aRateBase: 1.10,
+        aRateEnergy: 1.00,
+        bRate: 0.35,
+        bBase: 1.30,
+        bEnergy: 0.80,
+
+        color: {
+          saturation: 100,
+          lightness: 65,
+          alpha: 0.92,
+          hueTimeRate: 12,
+        },
+
+        master: {
+          scaleMul: 1.25,   // Master orb: larger
+          sizeMul: 1.65,
+          energyMul: 1.05,
+        },
+
+        band: {
+          scaleMul: 0.85,   // Band orbs: smaller
+          sizeMul: 0.85,
+          energyMul: 1.00,
+        },
+      },
+
+      idleEnergy: {
+        full:  { base: 0.12, a1: 0.08, f1: 0.90, a2: 0.04, f2: 2.20 },
+        left:  { base: 0.10, a1: 0.06, f1: 1.10, phase:  1.30 },
+        right: { base: 0.10, a1: 0.06, f1: 1.05, phase: -0.70 },
+      },
+
+      performance: {
+        fpsUpdateIntervalMs: 500,
+        fpsSampleSize: 60,
+      },
+
+      touch: {
+        swipeThresholdPx: 50,
+        pinchThresholdPx: 20,
+
+        trailPerPixel: 1 / 500,
+        orbitPerPixel: 0.5,
+        pinchOrbStep: 2, // step total orbs by 2 to keep odd counts
+      },
+
+      share: {
+        hashPrefix: "preset=",
+        useBase64Url: true,
+      },
+
+      keyboard: {
+        pauseFreezesVisualOnly: true,
+      },
+
+      mood: "Rainbow Disco",
+    };
+
+    // Deep copy defaults into runtime parameters
+    const PARAMS = JSON.parse(JSON.stringify(DEFAULTS));
+
+    /* =====================================================================
+      2) MOOD PRESETS REGISTRY (v2.3)
+      - Mood is one preset for the renderer.
+      - Master + bands behaviors are configured separately.
+      - Both current moods keep the current Master behavior.
+      TODO(v2.4): Allow importing additional mood presets from external JSON/URL.
+      TODO(v2.5): Add an in-app editor to modify/create presets live and export them.
+    ====================================================================== */
+    const MOODS = {
+      "Rainbow Disco": {
+        master: { colorMode: "rainbow" }, // current master
+        bands:  { colorMode: "rainbow" }, // current bands
+      },
+
+      "Instrument Disco": {
+        master: { colorMode: "rainbow" }, // master stays as-is in v2.3
+        bands: {
+          colorMode: "gradient3",
+          stereoInvertRight: true,
+
+          // 3 gradient families (cycled if more bands exist)
+          // Band1: Green -> Magenta (inverse encoded by stereo inversion)
+          // Band2: Yellow -> Blue
+          // Band3: Red -> Cyan
+          gradientFamilies: [
+            { start: [  0,255,  0], mid: [127,127,127], end: [255,  0,255] }, // green -> gray -> magenta
+            { start: [255,255,  0], mid: [127,127,127], end: [  0,  0,255] }, // yellow -> gray -> blue
+            { start: [255,  0,  0], mid: [127,127,127], end: [  0,255,255] }, // red -> gray -> cyan
+          ],
+        },
+      },
+    };
+
+    function getActiveMood() {
+      return MOODS[PARAMS.mood] || MOODS[DEFAULTS.mood];
+    }
+
+    /* =====================================================================
+      3) DOM / Canvas
+    ====================================================================== */
+    const canvas  = document.getElementById("render-target");
+    const ctx     = canvas.getContext("2d", PARAMS.canvas.context);
+    const mainEl  = document.querySelector("main");
+
+    const overlay   = document.getElementById("dom-target");
+    const statusEl  = document.getElementById("status");
+    const btnMic    = document.getElementById("btn-mic");
+    const btnHide   = document.getElementById("btn-hide");
+    const fileInput = document.getElementById("file-input");
+    const player    = document.getElementById("player");
+
+    const btnStop    = document.getElementById("btn-stop");
+    const btnOverlay = document.getElementById("btn-overlay");
+    const btnShare   = document.getElementById("btn-share");
+
+    const fpsEl  = document.getElementById("fps");
+    const helpEl = document.getElementById("help");
+
+    /* =====================================================================
+      4) State (all mutable runtime state)
+    ====================================================================== */
+    const state = {
+      vw: 0, vh: 0, dpr: 1, backgroundDrawn: false,
+
+      time: 0,
+      lastNow: performance.now(),
+      paused: false,
+
+      audioCtx: null,
+      mode: "idle", // "idle" | "mic" | "file"
+
+      mic: { stream: null, source: null },
+
+      file: {
+        objectUrl: null,
+        mediaSource: null, // created ONCE per <audio> element
+      },
+
+      graph: {
+        source: null,
+        splitter: null,
+        masterAnalyser: null,
+        leftAnalyser: null,
+        rightAnalyser: null,
+        gain: null,
+      },
+
+      masterData: null,
+      leftData: null,
+      rightData: null,
+
+      // Smoothed energies:
+      // masterFull: mono-ish total (master analyser average)
+      masterFull: 0,
+
+      // Bands: arrays (length = DEFAULTS.audio.bands.length)
+      bandL: [],
+      bandR: [],
+      bandC: [],
+
+      // BPM-ish detector
+      energyHistory: [],
+      energySum: 0,
+      lastPeakTimeMs: 0,
+      bpm: DEFAULTS.bpm.idleBase,
+
+      // Error recovery
+      errorLog: [],
+
+      // Debug/FPS
+      debug: false,
+      fpsFrames: [],
+      lastFpsUpdate: 0,
+
+      // Touch state
+      touch: {
+        active: false,
+        startX: 0,
+        startY: 0,
+        startDistance: 0,
+      },
+    };
+
+    // Initialize band arrays to correct length
+    function initBandArrays() {
+      const n = PARAMS.audio.bands.length;
+      state.bandL = new Array(n).fill(0);
+      state.bandR = new Array(n).fill(0);
+      state.bandC = new Array(n).fill(0);
+    }
+    initBandArrays();
+
+    /* =====================================================================
+      5) Utilities
+    ====================================================================== */
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    function setStatus(msg) {
+      statusEl.textContent = `${PARAMS.ui.statusPrefix}${msg}`;
+    }
+
+    function hideOverlay() {
+      overlay.style.opacity = "0";
+      window.setTimeout(() => { overlay.style.display = "none"; }, PARAMS.ui.overlayFadeMs);
+    }
+
+    function showOverlay() {
+      overlay.style.display = "grid";
+      overlay.getBoundingClientRect(); // flush for transition correctness
+      overlay.style.opacity = "1";
+    }
+
+    function showHelp() {
+      helpEl.classList.add("show");
+      window.setTimeout(() => { helpEl.classList.remove("show"); }, PARAMS.ui.helpDisplayMs);
+    }
+
+    function averageNormalized(bytes, startBin, binCount) {
+      const start = Math.max(0, Math.min(bytes.length, startBin));
+      const end = Math.max(start, Math.min(bytes.length, start + binCount));
+      let sum = 0;
+      for (let i = start; i < end; i++) sum += bytes[i];
+      const n = Math.max(1, end - start);
+      return sum / (n * 255);
+    }
+
+    function averageFrac(bytes, loFrac, hiFrac) {
+      const lo = clamp(loFrac, 0, 1);
+      const hi = clamp(hiFrac, 0, 1);
+      const start = Math.floor(lo * bytes.length);
+      const end = Math.max(start + 1, Math.floor(hi * bytes.length));
+      return averageNormalized(bytes, start, end - start);
+    }
+
+    /* ===== URL-safe base64 helpers (preset sharing) ===== */
+    function base64UrlEncode(str) {
+      const b64 = btoa(str);
+      return b64.replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+    }
+    function base64UrlDecode(b64url) {
+      const b64 = b64url.replaceAll("-", "+").replaceAll("_", "/");
+      const padLen = (4 - (b64.length % 4)) % 4;
+      const padded = b64 + "=".repeat(padLen);
+      return atob(padded);
+    }
+
+    /* =====================================================================
+      6) Canvas sizing (match <main>)
+    ====================================================================== */
+    function resizeToMain() {
+      state.dpr = Math.max(1, window.devicePixelRatio || 1);
+      const r = mainEl.getBoundingClientRect();
+
+      state.vw = r.width;
+      state.vh = r.height;
+
+      canvas.style.width = `${state.vw}px`;
+      canvas.style.height = `${state.vh}px`;
+      canvas.width = Math.floor(state.vw * state.dpr);
+      canvas.height = Math.floor(state.vh * state.dpr);
+
+      ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+      state.backgroundDrawn = false;
+    }
+    new ResizeObserver(resizeToMain).observe(mainEl);
+    window.addEventListener("resize", resizeToMain, { passive: true });
+    resizeToMain();
+
+    /* =====================================================================
+      7) Audio context + graph
+    ====================================================================== */
+    async function ensureAudioContext() {
+      if (!state.audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) throw new Error("Web Audio is not supported in this browser.");
+        state.audioCtx = new Ctx();
+      }
+      if (state.audioCtx.state === "suspended") {
+        await state.audioCtx.resume();
+      }
+      return state.audioCtx;
+    }
+
+    function disconnectGraph() {
+      const g = state.graph;
+      try { g.source?.disconnect(); } catch {}
+      try { g.splitter?.disconnect(); } catch {}
+      try { g.masterAnalyser?.disconnect(); } catch {}
+      try { g.leftAnalyser?.disconnect(); } catch {}
+      try { g.rightAnalyser?.disconnect(); } catch {}
+      try { g.gain?.disconnect(); } catch {}
+
+      state.graph = { source: null, splitter: null, masterAnalyser: null, leftAnalyser: null, rightAnalyser: null, gain: null };
+      state.masterData = null;
+      state.leftData = null;
+      state.rightData = null;
+    }
+
+    function resetEnergyAndBpm() {
+      state.masterFull = 0;
+      initBandArrays();
+
+      state.energyHistory.length = 0;
+      state.energySum = 0;
+      state.lastPeakTimeMs = 0;
+      state.bpm = DEFAULTS.bpm.idleBase;
+    }
+
+    function buildGraph(sourceNode, audioCtx, connectToDestination) {
+      disconnectGraph();
+      resetEnergyAndBpm();
+
+      const masterAnalyser = audioCtx.createAnalyser();
+      masterAnalyser.fftSize = PARAMS.audio.analyser.masterFFTSize;
+
+      const splitter = audioCtx.createChannelSplitter(2);
+
+      const leftAnalyser = audioCtx.createAnalyser();
+      const rightAnalyser = audioCtx.createAnalyser();
+      leftAnalyser.fftSize = PARAMS.audio.analyser.sideFFTSize;
+      rightAnalyser.fftSize = PARAMS.audio.analyser.sideFFTSize;
+
+      const masterData = new Uint8Array(masterAnalyser.frequencyBinCount);
+      const leftData = new Uint8Array(leftAnalyser.frequencyBinCount);
+      const rightData = new Uint8Array(rightAnalyser.frequencyBinCount);
+
+      sourceNode.connect(masterAnalyser);
+      sourceNode.connect(splitter);
+      splitter.connect(leftAnalyser, 0);
+      splitter.connect(rightAnalyser, 1);
+
+      let gain = null;
+      if (connectToDestination) {
+        gain = audioCtx.createGain();
+        gain.gain.value = PARAMS.audio.gainToDestination;
+        sourceNode.connect(gain);
+        gain.connect(audioCtx.destination);
+      }
+
+      state.graph = { source: sourceNode, splitter, masterAnalyser, leftAnalyser, rightAnalyser, gain };
+      state.masterData = masterData;
+      state.leftData = leftData;
+      state.rightData = rightData;
+    }
+
+    /* =====================================================================
+      8) Error recovery (bounded window)
+    ====================================================================== */
+    function logError(msg) {
+      const now = performance.now();
+      state.errorLog.push({ t: now, msg });
+
+      const cfg = PARAMS.audio.errorRecovery;
+      state.errorLog = state.errorLog.filter(e => (now - e.t) < cfg.errorWindowMs);
+
+      if (state.errorLog.length >= cfg.maxErrorsInWindow) {
+        console.warn("[Auto-Recovery] Too many errors; falling back to idle.", state.errorLog);
+        setStatus("auto-recovery: too many errors → idle");
+        stopAudio();
+        state.errorLog.length = 0;
+      }
+    }
+
+    /* =====================================================================
+      9) Start/Stop modes
+    ====================================================================== */
+    function stopMicTracks() {
+      if (state.mic.stream) {
+        for (const t of state.mic.stream.getTracks()) t.stop();
+      }
+      state.mic.stream = null;
+      state.mic.source = null;
+    }
+
+    async function startMic() {
+      try {
+        if (!window.isSecureContext) {
+          throw new Error(
+            "Microphone requires a secure origin.\n" +
+            "Use https OR open via http://localhost.\n" +
+            "(file:// will never prompt for mic)."
+          );
+        }
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error("getUserMedia() is not available in this browser/context.");
+        }
+
+        setStatus("requesting microphone permission...");
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioCtx = await ensureAudioContext();
+
+        stopMicTracks();
+        const source = audioCtx.createMediaStreamSource(stream);
+        state.mic.stream = stream;
+        state.mic.source = source;
+
+        buildGraph(source, audioCtx, false);
+
+        state.mode = "mic";
+        state.errorLog.length = 0;
+        setStatus("microphone active ✅ (rendering stereo analysis)");
+        hideOverlay();
+      } catch (err) {
+        const m = err?.message || String(err);
+        setStatus("mic failed ❌\n" + m);
+        logError("mic start: " + m);
+      }
+    }
+
+    async function startFile(file) {
+      try {
+        const audioCtx = await ensureAudioContext();
+
+        if (state.file.objectUrl) URL.revokeObjectURL(state.file.objectUrl);
+        state.file.objectUrl = URL.createObjectURL(file);
+
+        player.src = state.file.objectUrl;
+        player.style.display = "block";
+
+        // Create MediaElementSource ONCE per <audio> element (robust reuse).
+        if (!state.file.mediaSource) {
+          state.file.mediaSource = audioCtx.createMediaElementSource(player);
+        }
+
+        buildGraph(state.file.mediaSource, audioCtx, true);
+
+        await player.play();
+
+        state.mode = "file";
+        state.errorLog.length = 0;
+        setStatus(`file active ✅ (${file.name}) (rendering stereo analysis)`);
+        hideOverlay();
+      } catch (err) {
+        const m = err?.message || String(err);
+        setStatus("file mode failed ❌\n" + m);
+        logError("file start: " + m);
+      }
+    }
+
+    function stopAudio() {
+      stopMicTracks();
+
+      try { player.pause(); } catch {}
+      player.style.display = "none";
+
+      if (state.file.objectUrl) {
+        URL.revokeObjectURL(state.file.objectUrl);
+        state.file.objectUrl = null;
+      }
+      player.src = "";
+
+      disconnectGraph();
+      resetEnergyAndBpm();
+
+      state.mode = "idle";
+      state.paused = false;
+      setStatus("idle (audio stopped). Demo mode running.");
+    }
+
+    function resetToDefaults() {
+      const fresh = JSON.parse(JSON.stringify(DEFAULTS));
+      for (const k of Object.keys(PARAMS)) PARAMS[k] = fresh[k];
+
+      state.backgroundDrawn = false;
+      syncAllControlsFromParams();
+      setStatus("reset to defaults ✅");
+    }
+
+    /* =====================================================================
+      10) Audio sampling -> energies (Master full spectrum + N bands L/R)
+    ====================================================================== */
+    function idleEnergyOscillator() {
+      const t = state.time;
+      const id = PARAMS.idleEnergy;
+
+      let full  = id.full.base  + id.full.a1  * S(t * id.full.f1)  + id.full.a2  * S(t * id.full.f2);
+      let left  = id.left.base  + id.left.a1  * S(t * id.left.f1  + id.left.phase);
+      let right = id.right.base + id.right.a1 * S(t * id.right.f1 + id.right.phase);
+
+      full  = clamp(full, 0, 1);
+      left  = clamp(left, 0, 1);
+      right = clamp(right, 0, 1);
+
+      // Fake 3-band distribution (idle): low dominates a bit, highs weaker
+      const bands = PARAMS.audio.bands.length;
+      const l = new Array(bands).fill(0);
+      const r = new Array(bands).fill(0);
+      for (let i = 0; i < bands; i++) {
+        const w = (i === 0) ? 1.0 : (i === 1) ? 0.75 : 0.55;
+        l[i] = clamp(left * w, 0, 1);
+        r[i] = clamp(right * w, 0, 1);
+      }
+
+      return { masterFull: full, bandL: l, bandR: r, isReal: false };
+    }
+
+    function sampleSpectrumEnergies() {
+      const g = state.graph;
+
+      if (g.masterAnalyser && g.leftAnalyser && g.rightAnalyser) {
+        try {
+          g.masterAnalyser.getByteFrequencyData(state.masterData);
+          g.leftAnalyser.getByteFrequencyData(state.leftData);
+          g.rightAnalyser.getByteFrequencyData(state.rightData);
+
+          // Master full-spectrum average (mono/sum-ish)
+          const masterFull = averageNormalized(state.masterData, 0, state.masterData.length);
+
+          // N bands (L/R) via normalized ranges
+          const bands = PARAMS.audio.bands;
+          const bandL = new Array(bands.length);
+          const bandR = new Array(bands.length);
+
+          for (let i = 0; i < bands.length; i++) {
+            const b = bands[i];
+            bandL[i] = averageFrac(state.leftData, b.lo, b.hi);
+            bandR[i] = averageFrac(state.rightData, b.lo, b.hi);
+          }
+
+          return { masterFull, bandL, bandR, isReal: true };
+        } catch (err) {
+          logError("audio sampling: " + (err?.message || String(err)));
+          return idleEnergyOscillator();
+        }
+      }
+
+      return idleEnergyOscillator();
+    }
+
+    function updateSmoothedEnergies(sample) {
+      const s = PARAMS.audio.energySmoothing;
+
+      // Master
+      state.masterFull = state.masterFull * s + sample.masterFull * (1 - s);
+
+      // Bands
+      const n = PARAMS.audio.bands.length;
+      for (let i = 0; i < n; i++) {
+        const l = sample.bandL[i] ?? 0;
+        const r = sample.bandR[i] ?? 0;
+        state.bandL[i] = state.bandL[i] * s + l * (1 - s);
+        state.bandR[i] = state.bandR[i] * s + r * (1 - s);
+        state.bandC[i] = state.bandC[i] * s + ((l + r) * 0.5) * (1 - s);
+      }
+
+      // BPM input: average of band centers (stable, “music-ish”)
+      let mono = 0;
+      for (let i = 0; i < n; i++) mono += state.bandC[i];
+      mono /= Math.max(1, n);
+
+      return mono;
+    }
+
+    function updateBpmLikeDetector(nowMs, monoEnergy, enabled) {
+      const cfg = PARAMS.bpm;
+
+      if (!enabled) {
+        state.bpm = cfg.idleBase + cfg.idleAmp * S(state.time * cfg.idleRate);
+        return;
+      }
+
+      state.energyHistory.push(monoEnergy);
+      state.energySum += monoEnergy;
+
+      if (state.energyHistory.length > cfg.historySize) {
+        state.energySum -= state.energyHistory.shift();
+      }
+
+      const n = Math.max(1, state.energyHistory.length);
+      const avg = state.energySum / n;
+
+      if (monoEnergy > avg * cfg.peakFactor && (nowMs - state.lastPeakTimeMs) > cfg.refractoryMs) {
+        const interval = nowMs - state.lastPeakTimeMs;
+        state.lastPeakTimeMs = nowMs;
+
+        if (interval > 0) {
+          const detected = 60000 / interval;
+          const clampedBpm = clamp(detected, cfg.minBpm, cfg.maxBpm);
+          state.bpm = state.bpm * (1 - cfg.emaAlpha) + clampedBpm * cfg.emaAlpha;
+        }
+      }
+    }
+
+    /* =====================================================================
+      11) Drawing
+    ====================================================================== */
+    function beginFrame() {
+      const w = state.vw;
+      const h = state.vh;
+
+      if (!state.backgroundDrawn) {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = PARAMS.canvas.backgroundColor;
+        ctx.fillRect(0, 0, w, h);
+        state.backgroundDrawn = true;
+      }
+
+      ctx.globalCompositeOperation = PARAMS.canvas.compositeDraw;
+      ctx.fillStyle = `rgba(0,0,0,${clamp(PARAMS.canvas.trailAlpha, 0, 1)})`;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.globalCompositeOperation = PARAMS.canvas.compositeFX;
+    }
+
+    function interpGradient3(g, u) {
+      const t = clamp(u, 0, 1);
+      if (t < 0.5) {
+        const tt = t / 0.5;
+        return [
+          Math.round(lerp(g.start[0], g.mid[0], tt)),
+          Math.round(lerp(g.start[1], g.mid[1], tt)),
+          Math.round(lerp(g.start[2], g.mid[2], tt)),
+        ];
+      } else {
+        const tt = (t - 0.5) / 0.5;
+        return [
+          Math.round(lerp(g.mid[0], g.end[0], tt)),
+          Math.round(lerp(g.mid[1], g.end[1], tt)),
+          Math.round(lerp(g.mid[2], g.end[2], tt)),
+        ];
+      }
+    }
+
+    function particleColorString({ role, bandIndex, isRight, k, particleCount, energy, hueOffsetDeg }) {
+      const d = PARAMS.draw;
+      const mood = getActiveMood();
+
+      const colorMode = (role === "master") ? mood.master.colorMode : mood.bands.colorMode;
+
+      if (colorMode === "gradient3" && role !== "master") {
+        const fams = mood.bands.gradientFamilies;
+        const fam = fams[bandIndex % fams.length];
+
+        const denom = Math.max(1, particleCount - 1);
+        let u = k / denom;
+
+        if (mood.bands.stereoInvertRight && isRight) u = 1 - u;
+
+        const rgb = interpGradient3(fam, u);
+
+        // Optional energy modulation (kept mild to preserve interpretability)
+        const a = clamp(d.color.alpha * (0.70 + 0.30 * energy), 0, 1);
+        return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`;
+      }
+
+      // Rainbow (baseline): HSLA sweep
+      const hue = (k * (360 / particleCount) + state.time * d.color.hueTimeRate + hueOffsetDeg) % 360;
+      const a = clamp(d.color.alpha * (0.65 + 0.35 * energy), 0, 1);
+      return `hsla(${hue},${d.color.saturation}%,${d.color.lightness}%,${a})`;
+    }
+
+    function drawOrb({ centerX, centerY, energy, particleCount, hueOffsetDeg, role, bandIndex, isRight }) {
+      const d = PARAMS.draw;
+
+      const roleCfg = (role === "master") ? d.master : d.band;
+      const e = clamp(energy * roleCfg.energyMul, 0, 1);
+
+      const scale = (d.baseScale + e * d.energyScale) * roleCfg.scaleMul;
+
+      for (let k = 0; k < particleCount; k++) {
+        const angle = (k * TAU) / particleCount;
+
+        const spiralTimeRate = d.spiral.timeBase + e * d.spiral.timeEnergy;
+        const spiralAmp = d.spiral.ampBase + e * d.spiral.ampEnergy;
+        const spiralPhase = state.time * spiralTimeRate + k * d.spiral.perParticlePhase + (hueOffsetDeg / 100);
+        const spiral = S(spiralPhase) * spiralAmp;
+
+        const a = state.time * (d.aRateBase + e * d.aRateEnergy) + angle + spiral;
+        const b = S(a * d.bRate + angle) * (d.bBase + e * d.bEnergy);
+
+        const X = C(b) * C(a);
+        const Y = S(b);
+        const Z = C(b) * S(a) + d.zBias;
+
+        const depth = Z * d.depthScale + d.depthBias;
+        const size = ((d.sizeBase + e * d.sizeEnergy) / depth) * roleCfg.sizeMul;
+
+        ctx.fillStyle = particleColorString({ role, bandIndex, isRight, k, particleCount, energy: e, hueOffsetDeg });
+
+        ctx.fillRect(
+          centerX + (X * scale) / depth - size * 0.5,
+          centerY + (Y * scale) / depth - size * 0.5,
+          size,
+          size
+        );
+      }
+    }
+
+    /* =====================================================================
+      12) Debug FPS
+    ====================================================================== */
+    function updateFPS(nowMs) {
+      if (!state.debug) return;
+
+      const cfg = PARAMS.performance;
+      state.fpsFrames.push(nowMs);
+      while (state.fpsFrames.length > cfg.fpsSampleSize) state.fpsFrames.shift();
+
+      if ((nowMs - state.lastFpsUpdate) > cfg.fpsUpdateIntervalMs && state.fpsFrames.length > 1) {
+        const span = state.fpsFrames[state.fpsFrames.length - 1] - state.fpsFrames[0];
+        const fps = ((state.fpsFrames.length - 1) / span) * 1000;
+        fpsEl.textContent = `FPS: ${fps.toFixed(1)}`;
+        state.lastFpsUpdate = nowMs;
+      }
+    }
+
+    function toggleDebug() {
+      state.debug = !state.debug;
+      fpsEl.style.display = state.debug ? "block" : "none";
+
+      if (state.debug) {
+        state.fpsFrames.length = 0;
+        state.lastFpsUpdate = performance.now();
+        setStatus("debug enabled (FPS visible)");
+      } else {
+        setStatus("debug disabled");
+      }
+    }
+
+    /* =====================================================================
+      13) Preset share/import (hash)
+      - Includes mood
+      TODO(v2.4): Add import from file/paste and allow importing full mood presets registry entries.
+    ====================================================================== */
+    function exportPreset() {
+      const preset = {
+        mood: PARAMS.mood,
+        orbs: PARAMS.orbs.total,
+        pmin: PARAMS.particles.min,
+        pmax: PARAMS.particles.max,
+        trail: PARAMS.canvas.trailAlpha,
+        orbit: PARAMS.orbs.orbit.laneSpacing,
+        orbitE: PARAMS.orbs.orbit.energyRadius,
+      };
+
+      const json = JSON.stringify(preset);
+      const encoded = PARAMS.share.useBase64Url ? base64UrlEncode(json) : btoa(json);
+
+      window.location.hash = `${PARAMS.share.hashPrefix}${encoded}`;
+
+      const url = window.location.href;
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(url).then(
+          () => setStatus("preset URL copied ✅"),
+          () => setStatus("preset saved to URL (copy from address bar)")
+        );
+      } else {
+        setStatus("preset saved to URL (copy from address bar)");
+      }
+    }
+
+    function importPreset() {
+      const hash = window.location.hash || "";
+      if (!hash.startsWith("#" + PARAMS.share.hashPrefix)) return false;
+
+      try {
+        const encoded = hash.slice(("#" + PARAMS.share.hashPrefix).length);
+        const json = PARAMS.share.useBase64Url ? base64UrlDecode(encoded) : atob(encoded);
+        const preset = JSON.parse(json);
+
+        // Mood first (so future imports can change constraints)
+        if (preset.mood != null && MOODS[preset.mood]) PARAMS.mood = preset.mood;
+
+        // Apply numeric params (then sync UI from PARAMS)
+        if (preset.orbs  != null) PARAMS.orbs.total = enforceOdd(clamp(preset.orbs, 1, PARAMS.orbs.maxTotal));
+        if (preset.pmin  != null) PARAMS.particles.min = clamp(preset.pmin, 4, 240);
+        if (preset.pmax  != null) PARAMS.particles.max = clamp(preset.pmax, 8, 320);
+        if (preset.trail != null) PARAMS.canvas.trailAlpha = clamp(preset.trail, 0, 0.25);
+        if (preset.orbit != null) PARAMS.orbs.orbit.laneSpacing = clamp(preset.orbit, 30, 260);
+        if (preset.orbitE!= null) PARAMS.orbs.orbit.energyRadius = clamp(preset.orbitE, 0, 620);
+
+        syncAllControlsFromParams();
+        setStatus("preset loaded ✅");
+        return true;
+      } catch (err) {
+        console.warn("preset load failed:", err);
+        return false;
+      }
+    }
+
+    /* =====================================================================
+      14) Control bindings (BI-DIRECTIONAL)
+    ====================================================================== */
+    const CONTROL_BINDS = [];
+
+    function bindRange({ id, parse, get, set, fmt }) {
+      const el = document.getElementById(id);
+      const out = document.getElementById(`${id}-v`);
+      const format = fmt || ((v) => String(v));
+
+      function applyFromUI() {
+        const v = parse(el.value);
+        set(v);
+        out.textContent = format(get());
+      }
+
+      function syncToUI() {
+        const v = get();
+        el.value = String(v);
+        out.textContent = format(v);
+      }
+
+      el.addEventListener("input", applyFromUI);
+      CONTROL_BINDS.push({ syncToUI });
+
+      syncToUI();
+    }
+
+    function bindSelect({ id, get, set, fmt }) {
+      const el = document.getElementById(id);
+      const out = document.getElementById(`${id}-v`);
+      const format = fmt || ((v) => String(v));
+
+      function applyFromUI() {
+        set(el.value);
+        out.textContent = format(get());
+      }
+
+      function syncToUI() {
+        const v = get();
+        el.value = String(v);
+        out.textContent = format(v);
+      }
+
+      el.addEventListener("change", applyFromUI);
+      CONTROL_BINDS.push({ syncToUI });
+
+      syncToUI();
+    }
+
+    function syncAllControlsFromParams() {
+      for (const b of CONTROL_BINDS) b.syncToUI();
+    }
+
+    function enforceOdd(v) {
+      // Keep total orbs odd: 1,3,5,7,9...
+      const n = Math.round(v);
+      return (n % 2 === 0) ? n + 1 : n;
+    }
+
+    // Mood selector
+    bindSelect({
+      id: "ctl-mood",
+      get: () => PARAMS.mood,
+      set: (v) => { PARAMS.mood = MOODS[v] ? v : DEFAULTS.mood; },
+      fmt: (v) => v,
+    });
+
+    // Orbs (odd total)
+    bindRange({
+      id: "ctl-orbs",
+      parse: (s) => parseInt(s, 10),
+      get: () => PARAMS.orbs.total,
+      set: (v) => { PARAMS.orbs.total = enforceOdd(clamp(v, 1, PARAMS.orbs.maxTotal)); },
+      fmt: (v) => {
+        const pairs = Math.max(0, (v - 1) / 2);
+        return `${v}  (master + ${pairs} stereo pair${pairs === 1 ? "" : "s"})`;
+      },
+    });
+
+    bindRange({
+      id: "ctl-pmin",
+      parse: (s) => parseInt(s, 10),
+      get: () => PARAMS.particles.min,
+      set: (v) => { PARAMS.particles.min = v; },
+      fmt: (v) => `${v}`,
+    });
+
+    bindRange({
+      id: "ctl-pmax",
+      parse: (s) => parseInt(s, 10),
+      get: () => PARAMS.particles.max,
+      set: (v) => { PARAMS.particles.max = v; },
+      fmt: (v) => `${v}`,
+    });
+
+    bindRange({
+      id: "ctl-trail",
+      parse: (s) => parseFloat(s),
+      get: () => PARAMS.canvas.trailAlpha,
+      set: (v) => { PARAMS.canvas.trailAlpha = v; },
+      fmt: (v) => v.toFixed(2),
+    });
+
+    bindRange({
+      id: "ctl-orbit",
+      parse: (s) => parseInt(s, 10),
+      get: () => PARAMS.orbs.orbit.laneSpacing,
+      set: (v) => { PARAMS.orbs.orbit.laneSpacing = v; },
+      fmt: (v) => `${v}px`,
+    });
+
+    bindRange({
+      id: "ctl-orbitE",
+      parse: (s) => parseInt(s, 10),
+      get: () => PARAMS.orbs.orbit.energyRadius,
+      set: (v) => { PARAMS.orbs.orbit.energyRadius = v; },
+      fmt: (v) => `${v}px`,
+    });
+
+    /* =====================================================================
+      15) Keyboard shortcuts
+    ====================================================================== */
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen?.().then(
+          () => setStatus("fullscreen enabled ✅ (F or ESC to exit)"),
+          (err) => setStatus("fullscreen failed ❌ " + (err?.message || String(err)))
+        );
+      } else {
+        document.exitFullscreen?.().then(
+          () => setStatus("fullscreen disabled"),
+          () => setStatus("fullscreen exit failed")
+        );
+      }
+    }
+
+    function handleKeyboard(e) {
+      if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT")) return;
+
+      const key = e.key;
+
+      if (key === " ") {
+        e.preventDefault();
+        state.paused = !state.paused;
+        setStatus(state.paused ? "paused" : "resumed");
+        return;
+      }
+
+      const lower = key.toLowerCase();
+      switch (lower) {
+        case "f":
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+        case "r":
+          e.preventDefault();
+          resetToDefaults();
+          break;
+        case "d":
+          e.preventDefault();
+          toggleDebug();
+          break;
+        case "s":
+          e.preventDefault();
+          exportPreset();
+          break;
+        case "?":
+          e.preventDefault();
+          showHelp();
+          break;
+        case "/":
+          if (e.shiftKey) {
+            e.preventDefault();
+            showHelp();
+          }
+          break;
+      }
+    }
+    document.addEventListener("keydown", handleKeyboard);
+
+    /* =====================================================================
+      16) Touch gestures
+      - Vertical swipe: trailAlpha
+      - Horizontal swipe: orbit lane spacing
+      - Pinch: total orbs (odd stepping by 2)
+    ====================================================================== */
+    function touchDistance(t0, t1) {
+      const dx = t0.clientX - t1.clientX;
+      const dy = t0.clientY - t1.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function handleTouchStart(e) {
+      if (e.touches.length === 1) {
+        state.touch.active = true;
+        state.touch.startX = e.touches[0].clientX;
+        state.touch.startY = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        state.touch.startDistance = touchDistance(e.touches[0], e.touches[1]);
+      }
+    }
+
+    function handleTouchMove(e) {
+      const tcfg = PARAMS.touch;
+
+      if (e.touches.length === 1 && state.touch.active) {
+        const x = e.touches[0].clientX;
+        const y = e.touches[0].clientY;
+        const dx = x - state.touch.startX;
+        const dy = y - state.touch.startY;
+
+        // Vertical swipe: trail
+        if (Math.abs(dy) > tcfg.swipeThresholdPx && Math.abs(dy) > Math.abs(dx)) {
+          e.preventDefault();
+          const deltaTrail = -dy * tcfg.trailPerPixel;
+          PARAMS.canvas.trailAlpha = clamp(PARAMS.canvas.trailAlpha + deltaTrail, 0, 0.25);
+
+          state.touch.startY = y;
+          syncAllControlsFromParams();
+          return;
+        }
+
+        // Horizontal swipe: orbit spacing
+        if (Math.abs(dx) > tcfg.swipeThresholdPx && Math.abs(dx) > Math.abs(dy)) {
+          e.preventDefault();
+          const deltaOrbit = dx * tcfg.orbitPerPixel;
+          PARAMS.orbs.orbit.laneSpacing = clamp(PARAMS.orbs.orbit.laneSpacing + deltaOrbit, 30, 260);
+
+          state.touch.startX = x;
+          syncAllControlsFromParams();
+          return;
+        }
+      }
+
+      // Pinch: total orbs (odd)
+      if (e.touches.length === 2) {
+        const dist = touchDistance(e.touches[0], e.touches[1]);
+        const delta = dist - state.touch.startDistance;
+
+        if (Math.abs(delta) > tcfg.pinchThresholdPx) {
+          e.preventDefault();
+          const step = (delta > 0) ? tcfg.pinchOrbStep : -tcfg.pinchOrbStep;
+          PARAMS.orbs.total = enforceOdd(clamp(PARAMS.orbs.total + step, 1, PARAMS.orbs.maxTotal));
+
+          state.touch.startDistance = dist;
+          syncAllControlsFromParams();
+        }
+      }
+    }
+
+    function handleTouchEnd() {
+      state.touch.active = false;
+    }
+
+    canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
+    canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+    canvas.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+    /* =====================================================================
+      17) UI events
+    ====================================================================== */
+    btnMic.addEventListener("click", startMic);
+
+    fileInput.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      await startFile(file);
+      fileInput.value = "";
+    });
+
+    btnHide.addEventListener("click", hideOverlay);
+    btnOverlay.addEventListener("click", showOverlay);
+    btnStop.addEventListener("click", stopAudio);
+    btnShare.addEventListener("click", exportPreset);
+
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) hideOverlay();
+    });
+
+    player.addEventListener("error", () => {
+      const errMsg = player.error ? `code ${player.error.code}` : "unknown error";
+      logError("audio element: " + errMsg);
+      setStatus("playback error: " + errMsg);
+    });
+
+    /* =====================================================================
+      18) Main loop
+    ====================================================================== */
+    function tick(nowMs) {
+      updateFPS(nowMs);
+
+      if (state.paused && PARAMS.keyboard.pauseFreezesVisualOnly) {
+        state.lastNow = nowMs;
+        requestAnimationFrame(tick);
+        return;
+      }
+
+      const dt = Math.min(PARAMS.time.dtClampSeconds, (nowMs - state.lastNow) / 1000);
+      state.lastNow = nowMs;
+      state.time += dt;
+
+      beginFrame();
+
+      // Sample energies (real or idle)
+      const sample = sampleSpectrumEnergies();
+      const bpmInputMono = updateSmoothedEnergies(sample);
+
+      const bpmEnabled = (state.mode === "mic" || state.mode === "file") && sample.isReal;
+      updateBpmLikeDetector(nowMs, bpmInputMono, bpmEnabled);
+
+      // Particle count derived from bpm, clamped
+      const pMin = Math.min(PARAMS.particles.min, PARAMS.particles.max);
+      const pMax = Math.max(PARAMS.particles.min, PARAMS.particles.max);
+      const particleCount = clamp(
+        Math.round(state.bpm / PARAMS.particles.bpmDivisor),
+        pMin,
+        pMax
+      );
+
+      const cx = state.vw * 0.5;
+      const cy = state.vh * 0.5;
+
+      // Orb grammar: total odd; master always present
+      const totalOrbs = enforceOdd(clamp(PARAMS.orbs.total, 1, PARAMS.orbs.maxTotal));
+      const bandPairs = Math.max(0, (totalOrbs - 1) / 2);
+
+      // MASTER ORB (center, “mono / sum spectrum”)
+      drawOrb({
+        centerX: cx,
+        centerY: cy,
+        energy: clamp(state.masterFull, 0, 1),
+        particleCount,
+        hueOffsetDeg: 0,
+        role: "master",
+        bandIndex: 0,
+        isRight: false,
+      });
+
+      // BAND ORBS (stereo pairs by band index)
+      const orbit = PARAMS.orbs.orbit;
+      const stereo = PARAMS.orbs.stereoMix;
+      const orbitPhase = state.time * orbit.phaseRate;
+
+      for (let bi = 0; bi < bandPairs; bi++) {
+        const bandIndex = bi % PARAMS.audio.bands.length;
+
+        const eL = clamp(state.bandL[bandIndex] + stereo.centerAdd * state.bandC[bandIndex], 0, 1);
+        const eR = clamp(state.bandR[bandIndex] + stereo.centerAdd * state.bandC[bandIndex], 0, 1);
+        const eC = clamp(state.bandC[bandIndex], 0, 1);
+
+        // Each band pair lives on its own lane/ring; energy inflates it.
+        const laneBase = orbit.laneSpacing * (bi + 1);
+        const laneRadius = laneBase + eC * orbit.energyRadius;
+
+        // Place L/R roughly opposite each other for clarity (still animated by phase)
+        const a0 = orbitPhase + (bi * 0.42);
+
+        const aL = a0 + 0.00;
+        const aR = a0 + Math.PI;
+
+        const oyFactor = orbit.yScale;
+        const yMul = orbit.yPhaseMultiplier;
+
+        const xL = cx + C(aL) * laneRadius;
+        const yL = cy + S(aL * yMul) * laneRadius * oyFactor;
+
+        const xR = cx + C(aR) * laneRadius;
+        const yR = cy + S(aR * yMul) * laneRadius * oyFactor;
+
+        // Hue offsets: spread by band index so rainbow mode stays diverse
+        const hueOffset = (bandIndex / Math.max(1, PARAMS.audio.bands.length)) * 360;
+
+        drawOrb({
+          centerX: xL,
+          centerY: yL,
+          energy: eL,
+          particleCount,
+          hueOffsetDeg: hueOffset + 20,
+          role: "band",
+          bandIndex,
+          isRight: false,
+        });
+
+        drawOrb({
+          centerX: xR,
+          centerY: yR,
+          energy: eR,
+          particleCount,
+          hueOffsetDeg: hueOffset + 200,
+          role: "band",
+          bandIndex,
+          isRight: true,
+        });
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    /* =====================================================================
+      19) Boot / lifecycle
+    ====================================================================== */
+    window.addEventListener("beforeunload", () => {
+      try { stopAudio(); } catch {}
+      try { state.audioCtx?.close?.(); } catch {}
+      state.audioCtx = null;
+    });
+
+    // Load preset from URL
+    const presetLoaded = importPreset();
+    if (!presetLoaded) {
+      setStatus("idle (rendering demo mode). Choose Microphone or Audio File.");
+    }
+
+    // One-time help hint
+    if (!sessionStorage.getItem(PARAMS.ui.helpShownStorageKey)) {
+      sessionStorage.setItem(PARAMS.ui.helpShownStorageKey, "1");
+      window.setTimeout(showHelp, PARAMS.ui.helpFirstShowDelayMs);
+    }
+
+    requestAnimationFrame((t) => { state.lastNow = t; tick(t); });
+  })();
+  </script>
+</body>
+</html>
